@@ -96,7 +96,7 @@ class Sock:
         properties['base_station_on'] = True if bool(
             vitals['bso']) or bool(vitals['chg']) else False
         properties['battery_percentage'] = float(vitals["bat"])
-        properties['battery_seconds'] = float(vitals["btt"])
+        properties['battery_minutes'] = float(vitals["btt"])
         properties['charging'] = CHARGING_STATUSES[int(vitals['chg'])]
         properties['signal_strength'] = float(vitals['rsi'])
         properties['last_updated'] = datetime.datetime.strptime(
