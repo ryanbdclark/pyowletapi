@@ -1,4 +1,4 @@
-from pyowletapi.owlet import Owlet
+from src.pyowletapi.owlet import Owlet
 
 import asyncio
 import json

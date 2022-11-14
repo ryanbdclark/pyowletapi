@@ -23,8 +23,6 @@ Tidy up exception logging
 
 Create test routines
 
-Add docstrings and type hinting to all functions
-
 ## Use
 import the base Olwet object 
 
