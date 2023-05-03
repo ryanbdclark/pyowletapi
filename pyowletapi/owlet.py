@@ -54,20 +54,21 @@ class Owlet:
         logger.info(f"Creating API object for {username}, region: {region}")
         self._api = OwletAPI(region, username, password, self._session)
 
-    async def authenticate(self) -> None:
+    async def authenticate(self) -> bool:
         """
         Method that calls the authenticate method on the OwletAPI object
 
         Returns
         ------
-        None
+        (bool):Boolean showing the status of the authentication
         """
         logger.info(
             f"attempting login for {self.username}, region {self.region}")
-        await self._api.authenticate()
-        logger.info("Authentication succesful")
+        if(await self._api.authenticate()):
+            logger.info("Authentication succesful")
+            return True
 
-    async def devices(self) -> dict[str:Sock]:
+    async def get_devices(self) -> dict[str:Sock]:
         """
         Method that calls the get devices method on the OwletAPI and returns a dictionary of the results
 
@@ -79,14 +80,27 @@ class Owlet:
         try:
             logger.info("retrieving devices")
             devices = await self._api.get_devices()
-
+            
             if len(devices) < 1:
                 raise OwletDevicesError
 
             return {device['device']['dsn']: Sock(self._api, device['device']) for device in devices}
-        except OwletDevicesError:
+        except OwletDevicesError("No devices exist for user"):
             logger.degug(
                 f"No devices exist for user {self.username}, region: {self.region}")
+            
+    async def check_device_exists(self, serial : str) -> bool:
+        """
+        Method that calls that checks if a specified device is valid for the current user
+
+        Returns
+        ------
+        (bool):Boolean showing the result of the check, if True the device is valid otherwise an OwletDeviceError will be raised
+        """
+        if serial in self.devices().keys():
+            return True
+        else:
+            raise OwletDevicesError("Supplied serial number not valid")
 
     async def close(self) -> None:
         """

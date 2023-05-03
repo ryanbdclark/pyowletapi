@@ -95,12 +95,10 @@ class OwletAPI:
             }
         }
 
-        self._api_url = self._region_info[self._region]['url_base']
-
         if self.session is None:
             self.session = aiohttp.ClientSession(raise_for_status=True)
 
-    async def authenticate(self) -> None:
+    async def authenticate(self) -> bool:
         """
         Authentiactes the user against the Owlet api using the provided details
 
@@ -110,6 +108,11 @@ class OwletAPI:
         -------
         None
         """
+        if self._region not in ['europe','world']:
+            raise OwletAuthenticationError("Supplied region not valid")
+        
+        self._api_url = self._region_info[self._region]['url_base']
+
         try:
             if self._auth_token is not None:
                 raise OwletError
@@ -141,8 +144,10 @@ class OwletAPI:
                             access_token
                         self._expiry = time.time() + response['expires_in']
 
-        except ClientResponseError as error:
-            raise OwletError from error
+            return True
+
+        except ClientResponseError:
+            raise OwletAuthenticationError("Bad request occurred check username and password and try again, did you select the correct region?")
         except Exception as error:
             raise OwletError from error
 
@@ -225,6 +230,6 @@ class OwletAPI:
             async with self.session.request(method, self._api_url+url, headers=self.headers, json=data) as response:
                 return await response.json()
         except ClientResponseError as error:
-            raise OwletError from error
+            raise OwletConnectionError from error
         except Exception as error:
             raise OwletError from error
