@@ -10,7 +10,7 @@ long_description = (here / "README.md").read_text(encoding="utf-8")
 setup(
    
     name="pyowletapi",
-    version="2023.05.3",
+    version="2023.05.5",
     description="Owlet baby montior API wrapper",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -22,8 +22,8 @@ setup(
     ],
     
     keywords="owlet, api, baby",
-    package_dir={"": "pyowletapi"}, 
-    packages=find_packages(where="pyowletapi"), 
+    package_dir={"": "src"}, 
+    packages=find_packages(where="src"), 
     python_requires=">=3.9",
     
     install_requires=["aiohttp"], 
