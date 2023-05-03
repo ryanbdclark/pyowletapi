@@ -22,8 +22,8 @@ setup(
     ],
     
     keywords="owlet, api, baby",
-    package_dir={"": "src"}, 
-    packages=find_packages(where="src"), 
+    package_dir={"": "pyowletapi"}, 
+    packages=find_packages(where="pyowletapi"), 
     python_requires=">=3.9",
     
     install_requires=["aiohttp"], 

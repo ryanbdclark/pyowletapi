@@ -5,7 +5,7 @@ from aiohttp import ClientSession
 from .api import OwletAPI
 from .sock import Sock
 
-from .exceptions import OwletDevicesError
+from .exceptions import OwletDevicesError, OwletAuthenticationError
 
 logger: Logger = logging.getLogger(__package__)
 
@@ -62,11 +62,14 @@ class Owlet:
         ------
         (bool):Boolean showing the status of the authentication
         """
-        logger.info(
-            f"attempting login for {self.username}, region {self.region}")
-        if(await self._api.authenticate()):
-            logger.info("Authentication succesful")
-            return True
+        try:
+            logger.info(
+                f"attempting login for {self.username}, region {self.region}")
+            if(await self._api.authenticate()):
+                logger.info("Authentication succesful")
+                return True
+        except OwletAuthenticationError:
+                return False
 
     async def get_devices(self) -> dict[str:Sock]:
         """

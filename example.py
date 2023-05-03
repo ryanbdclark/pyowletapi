@@ -2,14 +2,13 @@ from pyowletapi.owlet import Owlet
 from pyowletapi.exceptions import OwletAuthenticationError, OwletConnectionError
 
 import asyncio
-import json
+import os
 
 
 async def run():
-    with open("login.json") as file:
-        data = json.load(file)
-    username = data['username']
-    password = data['password']
+
+    username = os.environ['USERNAME']
+    password = os.environ['PASSWORD']
 
     owlet = Owlet('europe', username,
                   password)
