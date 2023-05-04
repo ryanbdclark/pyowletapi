@@ -171,7 +171,7 @@ class Sock:
             raw_properties["LOW_OX_ALRT"]["value"])
         properties['ppg_log_file'] = bool(
             raw_properties["PPG_LOG_FILE"]["value"])
-        properties['firmware_upate_available'] = bool(
+        properties['firmware_update_available'] = bool(
             raw_properties['FW_UPDATE_STATUS']['value'])
         properties['lost_power_alert'] = bool(
             raw_properties['LOST_POWER_ALRT']['value'])
