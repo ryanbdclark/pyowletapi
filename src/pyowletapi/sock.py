@@ -171,6 +171,13 @@ class Sock:
             raw_properties["LOW_OX_ALRT"]["value"])
         properties['ppg_log_file'] = bool(
             raw_properties["PPG_LOG_FILE"]["value"])
+        properties['firmware_upate_available'] = bool(
+            raw_properties['FW_UPDATE_STATUS']['value'])
+        properties['lost_power_alert'] = bool(
+            raw_properties['LOST_POWER_ALRT']['value'])
+        properties['sock_disconnected'] = bool(
+            raw_properties['SOCK_DISCON_ALRT']['value'])
+        properties['sock_off'] = bool(raw_properties['SOCK_OFF']['value'])
 
         vitals = json.loads(raw_properties["REAL_TIME_VITALS"]["value"])
         properties['oxygen_saturation'] = float(vitals["ox"])
@@ -180,7 +187,7 @@ class Sock:
             vitals['bso']) or bool(vitals['chg']) else False
         properties['battery_percentage'] = float(vitals["bat"])
         properties['battery_minutes'] = float(vitals["btt"])
-        properties['charging'] = CHARGING_STATUSES[int(vitals['chg'])]
+        properties['charging'] = True if int(vitals['chg']) in [1,2] else False
         properties['signal_strength'] = float(vitals['rsi'])
         properties['last_updated'] = datetime.datetime.strptime(
             raw_properties["REAL_TIME_VITALS"]["data_updated_at"], '%Y-%m-%dT%H:%M:%SZ').strftime("%Y/%m/%d %H:%M:%S")
