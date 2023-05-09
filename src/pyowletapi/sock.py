@@ -220,7 +220,7 @@ class Sock:
         """
         logging.info(f"Updating properties for device {self.serial}")
         self.raw_properties = await self._api.get_properties(self.serial)
-        self._version = self._api.check_sock_version(self.raw_properties)
+        self._version = await self._api.check_sock_version(self.raw_properties)
         self.properties = await self.normalise_properties(self.raw_properties)
 
         return (self.raw_properties, self.properties)
