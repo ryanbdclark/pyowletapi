@@ -258,6 +258,27 @@ class OwletAPI:
         for property in response:
             properties[property["property"]["name"]] = property["property"]
         return properties
+    
+    async def check_sock_version(self, device: str) -> int:
+        """
+        Calls the Owlet API to check sock version
+        
+        Parameters
+        ----------
+        device (str):The serial number of the device to check
+        
+        Returns
+        -------
+        int:Integer representing the version of the sock
+        """
+        properties = self.get_properties(device)
+
+        if "REAL_TIME_VITALS" in properties:
+            return 3
+        elif "CHARGE_STATUS" in properties:
+            return 2
+        else:
+            return 0
 
     async def request(self, method: str, url: str, data: dict = None) -> dict:
         """
