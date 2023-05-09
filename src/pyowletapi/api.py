@@ -198,18 +198,27 @@ class OwletAPI:
         if self.session:
             await self.session.close()
 
-    async def get_devices(self) -> dict:
+    async def get_devices(self, versions: list[int] = None) -> dict:
         """
         Returns a list of devices from the Owlet API, if the current time is after the expiry date of the connection the first re authenticate
+
+        Parameters
+        ----------
+        versions: takes a list of integers representing sock versions, will only return socks where the version is in the supplied list
 
         Returns
         ------
         dict: Dictionary containing the json response
         """
         if self._expiry <= time.time():
-            self.authenticate()
+            await self.authenticate()
 
         devices = await self.request("GET", ("/devices.json"))
+        if versions:
+            for idx, device in enumerate(devices):
+                version = await self.check_sock_version(device['device']['dsn'])
+                if version not in versions or version == 0:
+                    devices.pop(idx)
 
         if len(devices) < 1:
             raise OwletDevicesError
@@ -259,7 +268,7 @@ class OwletAPI:
             properties[property["property"]["name"]] = property["property"]
         return properties
     
-    async def check_sock_version(self, device: str) -> int:
+    async def check_sock_version(self, device: str, properties: dict = None) -> int:
         """
         Calls the Owlet API to check sock version
         
@@ -271,8 +280,9 @@ class OwletAPI:
         -------
         int:Integer representing the version of the sock
         """
-        properties = self.get_properties(device)
-
+        if properties is None:
+            properties = await self.get_properties(device)
+        
         if "REAL_TIME_VITALS" in properties:
             return 3
         elif "CHARGE_STATUS" in properties:

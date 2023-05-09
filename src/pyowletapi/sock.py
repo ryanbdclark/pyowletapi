@@ -66,6 +66,8 @@ class Sock:
         api (OwletAPI):OwletAPI object used to call the Owlet API
         data (dict):Data returned from the Owlet API showing the details of the sock
         """
+        self._api = api
+
         self._name = data["product_name"]
         self._model = data["model"]
         self._serial = data["dsn"]
@@ -76,9 +78,7 @@ class Sock:
         self._connection_status = data["connection_status"]
         self._device_type = data["device_type"]
         self._manuf_model = data["manuf_model"]
-        self._version
-
-        self._api = api
+        self._version = 0
 
         self.raw_properties = {}
         self.properties = {}
@@ -220,10 +220,7 @@ class Sock:
         """
         logging.info(f"Updating properties for device {self.serial}")
         self.raw_properties = await self._api.get_properties(self.serial)
-        if "REAL_TIME_VITALS" in self.raw_properties:
-            self._version = 3
-        elif "CHARGE_STATUS" in self.raw_properties:
-            self._version = 2
+        self._version = self._api.check_sock_version(self.raw_properties)
         self.properties = await self.normalise_properties(self.raw_properties)
 
         return (self.raw_properties, self.properties)
