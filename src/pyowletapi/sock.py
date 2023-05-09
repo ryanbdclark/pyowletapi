@@ -78,7 +78,7 @@ class Sock:
         self._connection_status = data["connection_status"]
         self._device_type = data["device_type"]
         self._manuf_model = data["manuf_model"]
-        self._version = 0
+        self._version = None
 
         self.raw_properties = {}
         self.properties = {}
@@ -207,6 +207,14 @@ class Sock:
 
         return properties
 
+    async def check_version(self) -> None:
+        version=0
+        if "REAL_TIME_VITALS" in self.raw_properties:
+            version=3
+        elif "CHARGE_STATUS" in self.raw_properties:
+            version= 2
+        self._version = version
+
     async def update_properties(
         self,
     ) -> tuple[dict[str, dict], dict[str : Union[bool, str, float]]]:
@@ -220,7 +228,8 @@ class Sock:
         """
         logging.info(f"Updating properties for device {self.serial}")
         self.raw_properties = await self._api.get_properties(self.serial)
-        self._version = await self._api.check_sock_version(self.raw_properties)
+        if self._version is None:
+            await self.check_version()
         self.properties = await self.normalise_properties(self.raw_properties)
 
         return (self.raw_properties, self.properties)

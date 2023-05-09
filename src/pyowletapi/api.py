@@ -177,14 +177,14 @@ class OwletAPI:
                             self._expiry = time.time() + response["expires_in"]
 
                 return {'token':self._auth_token, 'expiry': self._expiry}
-            
+
             except ClientResponseError:
                 raise OwletAuthenticationError(
                     "Bad request occurred check username and password and try again, did you select the correct region?"
                 )
             except Exception as error:
                 raise OwletError from error
-            
+
         return None
 
     async def close(self) -> None:
@@ -216,7 +216,13 @@ class OwletAPI:
         devices = await self.request("GET", ("/devices.json"))
         if versions:
             for idx, device in enumerate(devices):
-                version = await self.check_sock_version(device['device']['dsn'])
+
+                properties = await self.get_properties(device['device']['dsn'])
+                version=0
+                if "REAL_TIME_VITALS" in properties:
+                    version=3
+                elif "CHARGE_STATUS" in properties:
+                    version= 2
                 if version not in versions or version == 0:
                     devices.pop(idx)
 
@@ -267,28 +273,6 @@ class OwletAPI:
         for property in response:
             properties[property["property"]["name"]] = property["property"]
         return properties
-    
-    async def check_sock_version(self, device: str, properties: dict = None) -> int:
-        """
-        Calls the Owlet API to check sock version
-        
-        Parameters
-        ----------
-        device (str):The serial number of the device to check
-        
-        Returns
-        -------
-        int:Integer representing the version of the sock
-        """
-        if properties is None:
-            properties = await self.get_properties(device)
-        
-        if "REAL_TIME_VITALS" in properties:
-            return 3
-        elif "CHARGE_STATUS" in properties:
-            return 2
-        else:
-            return 0
 
     async def request(self, method: str, url: str, data: dict = None) -> dict:
         """
