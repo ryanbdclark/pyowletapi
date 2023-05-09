@@ -15,7 +15,7 @@ async def run():
     api = OwletAPI('europe', username, password)
 
     try:
-        await api.authenticate()
+        print(await api.authenticate())
         devices = await api.get_devices()
 
         socks = {device['device']['dsn']: Sock(api, device['device']) for device in devices}

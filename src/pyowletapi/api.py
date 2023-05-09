@@ -3,7 +3,7 @@ import time
 import logging
 from logging import Logger
 from aiohttp.client_exceptions import ClientResponseError
-from typing import Union
+from typing import Union, TypedDict
 
 from .exceptions import (
     OwletAuthenticationError,
@@ -14,6 +14,10 @@ from .exceptions import (
 
 logger: Logger = logging.getLogger(__package__)
 
+
+class TokenDict(TypedDict):
+    token: str
+    expiry: float
 
 class OwletAPI:
     """
@@ -112,7 +116,7 @@ class OwletAPI:
         if self.session is None:
             self.session = aiohttp.ClientSession(raise_for_status=True)
 
-    async def authenticate(self) -> Union[None, dict[str: Union[str,float]]]:
+    async def authenticate(self) -> Union[None, TokenDict]:
         """
         Authentiactes the user against the Owlet api using the provided details
 
