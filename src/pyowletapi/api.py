@@ -3,6 +3,7 @@ import time
 import logging
 from logging import Logger
 from aiohttp.client_exceptions import ClientResponseError
+from typing import Union
 
 from .exceptions import (
     OwletAuthenticationError,
@@ -64,6 +65,8 @@ class OwletAPI:
         region: str,
         user: str,
         password: str,
+        token: str = None,
+        expiry: float = None,
         session: aiohttp.ClientSession = None,
     ) -> None:
         """
@@ -81,8 +84,8 @@ class OwletAPI:
         self._region = region
         self._user = user
         self._password = password
-        self._auth_token: str = None
-        self._expiry: float = None
+        self._auth_token: str = token
+        self._expiry: float = expiry
         self.session = session
         self.headers = {}
         self.devices = {}
@@ -109,7 +112,7 @@ class OwletAPI:
         if self.session is None:
             self.session = aiohttp.ClientSession(raise_for_status=True)
 
-    async def authenticate(self) -> None:
+    async def authenticate(self) -> Union[None, dict[str: Union[str,float]]]:
         """
         Authentiactes the user against the Owlet api using the provided details
 
@@ -117,61 +120,68 @@ class OwletAPI:
 
         Returns
         -------
-        None
+        None: if auth_token and expiry in object are ok then returns none
+        dict: If auth token generated then dict with the new token returned
         """
         if self._region not in ["europe", "world"]:
             raise OwletAuthenticationError("Supplied region not valid")
 
         self._api_url = self._region_info[self._region]["url_base"]
 
-        try:
-            api_key = self._region_info[self._region]["apiKey"]
-            async with self.session.request(
-                "POST",
-                f"https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key={api_key}",
-                data={
-                    "email": self._user,
-                    "password": self._password,
-                    "returnSecureToken": True,
-                },
-                headers={
-                    "X-Android-Package": "com.owletcare.owletcare",
-                    "X-Android-Cert": "2A3BC26DB0B8B0792DBE28E6FFDC2598F9B12B74",
-                },
-            ) as response:
-                id_token = await response.json()
-                id_token = id_token["idToken"]
-
+        if self._auth_token is not None and self._expiry > time.time():
+            self.headers["Authorization"] = "auth_token " + self._auth_token
+        else:
+            try:
+                api_key = self._region_info[self._region]["apiKey"]
                 async with self.session.request(
-                    "GET",
-                    self._region_info[self._region]["url_mini"],
-                    headers={"Authorization": id_token},
+                    "POST",
+                    f"https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key={api_key}",
+                    data={
+                        "email": self._user,
+                        "password": self._password,
+                        "returnSecureToken": True,
+                    },
+                    headers={
+                        "X-Android-Package": "com.owletcare.owletcare",
+                        "X-Android-Cert": "2A3BC26DB0B8B0792DBE28E6FFDC2598F9B12B74",
+                    },
                 ) as response:
-                    mini_token = await response.json()
-                    mini_token = mini_token["mini_token"]
+                    id_token = await response.json()
+                    id_token = id_token["idToken"]
 
                     async with self.session.request(
-                        "POST",
-                        self._region_info[self._region]["url_signin"],
-                        json={
-                            "app_id": self._region_info[self._region]["app_id"],
-                            "app_secret": self._region_info[self._region]["app_secret"],
-                            "provider": "owl_id",
-                            "token": mini_token,
-                        },
+                        "GET",
+                        self._region_info[self._region]["url_mini"],
+                        headers={"Authorization": id_token},
                     ) as response:
-                        response = await response.json()
-                        access_token = response["access_token"]
-                        self.headers["Authorization"] = "auth_token " + access_token
-                        self._expiry = time.time() + response["expires_in"]
-                        print(self._expiry)
+                        mini_token = await response.json()
+                        mini_token = mini_token["mini_token"]
 
-        except ClientResponseError:
-            raise OwletAuthenticationError(
-                "Bad request occurred check username and password and try again, did you select the correct region?"
-            )
-        except Exception as error:
-            raise OwletError from error
+                        async with self.session.request(
+                            "POST",
+                            self._region_info[self._region]["url_signin"],
+                            json={
+                                "app_id": self._region_info[self._region]["app_id"],
+                                "app_secret": self._region_info[self._region]["app_secret"],
+                                "provider": "owl_id",
+                                "token": mini_token,
+                            },
+                        ) as response:
+                            response = await response.json()
+                            self._auth_token = response["access_token"]
+                            self.headers["Authorization"] = "auth_token " + self._auth_token
+                            self._expiry = time.time() + response["expires_in"]
+
+                return {'token':self._auth_token, 'expiry': self._expiry}
+            
+            except ClientResponseError:
+                raise OwletAuthenticationError(
+                    "Bad request occurred check username and password and try again, did you select the correct region?"
+                )
+            except Exception as error:
+                raise OwletError from error
+            
+        return None
 
     async def close(self) -> None:
         """
