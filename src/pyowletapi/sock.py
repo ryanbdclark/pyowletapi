@@ -76,12 +76,17 @@ class Sock:
         self._connection_status = data["connection_status"]
         self._device_type = data["device_type"]
         self._manuf_model = data["manuf_model"]
+        self._version
 
         self._api = api
 
         self.raw_properties = {}
         self.properties = {}
 
+
+    @property
+    def version(self) -> int:
+        return self._version
     @property
     def name(self) -> str:
         return self._name
@@ -184,20 +189,21 @@ class Sock:
         )
         properties["sock_off"] = bool(raw_properties["SOCK_OFF"]["value"])
 
-        vitals = json.loads(raw_properties["REAL_TIME_VITALS"]["value"])
-        properties["oxygen_saturation"] = float(vitals["ox"])
-        properties["heart_rate"] = float(vitals["hr"])
-        properties["moving"] = bool(vitals["mv"])
-        properties["base_station_on"] = (
-            True if bool(vitals["bso"]) or bool(vitals["chg"]) else False
-        )
-        properties["battery_percentage"] = float(vitals["bat"])
-        properties["battery_minutes"] = float(vitals["btt"])
-        properties["charging"] = True if int(vitals["chg"]) in [1, 2] else False
-        properties["signal_strength"] = float(vitals["rsi"])
-        properties["last_updated"] = datetime.datetime.strptime(
-            raw_properties["REAL_TIME_VITALS"]["data_updated_at"], "%Y-%m-%dT%H:%M:%SZ"
-        ).strftime("%Y/%m/%d %H:%M:%S")
+        if self._version == 3:
+            vitals = json.loads(raw_properties["REAL_TIME_VITALS"]["value"])
+            properties["oxygen_saturation"] = float(vitals["ox"])
+            properties["heart_rate"] = float(vitals["hr"])
+            properties["moving"] = bool(vitals["mv"])
+            properties["base_station_on"] = (
+                True if bool(vitals["bso"]) or bool(vitals["chg"]) else False
+            )
+            properties["battery_percentage"] = float(vitals["bat"])
+            properties["battery_minutes"] = float(vitals["btt"])
+            properties["charging"] = True if int(vitals["chg"]) in [1, 2] else False
+            properties["signal_strength"] = float(vitals["rsi"])
+            properties["last_updated"] = datetime.datetime.strptime(
+                raw_properties["REAL_TIME_VITALS"]["data_updated_at"], "%Y-%m-%dT%H:%M:%SZ"
+            ).strftime("%Y/%m/%d %H:%M:%S")
 
         return properties
 
@@ -214,6 +220,10 @@ class Sock:
         """
         logging.info(f"Updating properties for device {self.serial}")
         self.raw_properties = await self._api.get_properties(self.serial)
+        if "REAL_TIME_VITALS" in self.raw_properties:
+            self._version = 3
+        elif "CHARGE_STATUS" in self.raw_properties:
+            self._version = 2
         self.properties = await self.normalise_properties(self.raw_properties)
 
         return (self.raw_properties, self.properties)
