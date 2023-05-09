@@ -7,7 +7,7 @@ from typing import Union
 
 logger: Logger = logging.getLogger(__package__)
 
-CHARGING_STATUSES = ['NOT CHARGING', 'CHARGING', 'CHARGED']
+CHARGING_STATUSES = ["NOT CHARGING", "CHARGING", "CHARGED"]
 
 
 class Sock:
@@ -23,17 +23,17 @@ class Sock:
     serial : str
         the serial number of the device
     oem_model : str
-        The oem model of the device   
+        The oem model of the device
     sw_version : str
-        The software version of the device   
+        The software version of the device
     mac : str
-        The mac address the device   
+        The mac address the device
     lan_ip : str
-        The current lan ip address of the device   
+        The current lan ip address of the device
     connection_status : str
-        The current connection status of the device   
+        The current connection status of the device
     device_type : str
-        The device type   
+        The device type
     manuf_model : str
         The manunfacturer's model number
     api : OwletAPI
@@ -41,7 +41,7 @@ class Sock:
     raw_properties : dict
         A dictionionary containing the raw response from the device properties api call
     properties : dict
-        A formatted, cut down version of the current device properties   
+        A formatted, cut down version of the current device properties
 
     Methods
     -------
@@ -55,7 +55,9 @@ class Sock:
         usees the OwletAPI object to call the Owlet server and return the current properties of the device.
     """
 
-    def __init__(self, api: OwletAPI, data: dict[str:Union[str, int, bool, list]]) -> None:
+    def __init__(
+        self, api: OwletAPI, data: dict[str : Union[str, int, bool, list]]
+    ) -> None:
         """
         Constructs an Owlet sock object representing the owlet sock device
 
@@ -64,16 +66,16 @@ class Sock:
         api (OwletAPI):OwletAPI object used to call the Owlet API
         data (dict):Data returned from the Owlet API showing the details of the sock
         """
-        self._name = data['product_name']
-        self._model = data['model']
-        self._serial = data['dsn']
-        self._oem_model = data['oem_model']
-        self._sw_version = data['sw_version']
-        self._mac = data['mac']
-        self._lan_ip = data['lan_ip']
-        self._connection_status = data['connection_status']
-        self._device_type = data['device_type']
-        self._manuf_model = data['manuf_model']
+        self._name = data["product_name"]
+        self._model = data["model"]
+        self._serial = data["dsn"]
+        self._oem_model = data["oem_model"]
+        self._sw_version = data["sw_version"]
+        self._mac = data["mac"]
+        self._lan_ip = data["lan_ip"]
+        self._connection_status = data["connection_status"]
+        self._device_type = data["device_type"]
+        self._manuf_model = data["manuf_model"]
 
         self._api = api
 
@@ -144,7 +146,9 @@ class Sock:
         """
         return self.properties
 
-    async def normalise_properties(self, raw_properties: dict[str:dict]) -> dict[str:Union[bool, str, float]]:
+    async def normalise_properties(
+        self, raw_properties: dict[str:dict]
+    ) -> dict[str : Union[bool, str, float]]:
         """
         Takes the raw properties dictionary returned from the API and formats it into another dict that is more stripped down and easier to work with
 
@@ -157,44 +161,49 @@ class Sock:
             (dict):Returns the stripped down properties as a dict
         """
         properties = {}
-        properties['app_active'] = bool(raw_properties["APP_ACTIVE"]["value"])
+        properties["app_active"] = bool(raw_properties["APP_ACTIVE"]["value"])
 
-        properties['high_heart_rate_alert'] = bool(
-            raw_properties["HIGH_HR_ALRT"]["value"])
-        properties['high_oxygen_alert'] = bool(
-            raw_properties["HIGH_OX_ALRT"]["value"])
-        properties['low_battery_alert'] = bool(
-            raw_properties["LOW_BATT_ALRT"]["value"])
-        properties['low_heart_rate_alert'] = bool(
-            raw_properties["LOW_HR_ALRT"]["value"])
-        properties['low_oxygen_alert'] = bool(
-            raw_properties["LOW_OX_ALRT"]["value"])
-        properties['ppg_log_file'] = bool(
-            raw_properties["PPG_LOG_FILE"]["value"])
-        properties['firmware_update_available'] = bool(
-            raw_properties['FW_UPDATE_STATUS']['value'])
-        properties['lost_power_alert'] = bool(
-            raw_properties['LOST_POWER_ALRT']['value'])
-        properties['sock_disconnected'] = bool(
-            raw_properties['SOCK_DISCON_ALRT']['value'])
-        properties['sock_off'] = bool(raw_properties['SOCK_OFF']['value'])
+        properties["high_heart_rate_alert"] = bool(
+            raw_properties["HIGH_HR_ALRT"]["value"]
+        )
+        properties["high_oxygen_alert"] = bool(raw_properties["HIGH_OX_ALRT"]["value"])
+        properties["low_battery_alert"] = bool(raw_properties["LOW_BATT_ALRT"]["value"])
+        properties["low_heart_rate_alert"] = bool(
+            raw_properties["LOW_HR_ALRT"]["value"]
+        )
+        properties["low_oxygen_alert"] = bool(raw_properties["LOW_OX_ALRT"]["value"])
+        properties["ppg_log_file"] = bool(raw_properties["PPG_LOG_FILE"]["value"])
+        properties["firmware_update_available"] = bool(
+            raw_properties["FW_UPDATE_STATUS"]["value"]
+        )
+        properties["lost_power_alert"] = bool(
+            raw_properties["LOST_POWER_ALRT"]["value"]
+        )
+        properties["sock_disconnected"] = bool(
+            raw_properties["SOCK_DISCON_ALRT"]["value"]
+        )
+        properties["sock_off"] = bool(raw_properties["SOCK_OFF"]["value"])
 
         vitals = json.loads(raw_properties["REAL_TIME_VITALS"]["value"])
-        properties['oxygen_saturation'] = float(vitals["ox"])
-        properties['heart_rate'] = float(vitals["hr"])
-        properties['moving'] = bool(vitals["mv"])
-        properties['base_station_on'] = True if bool(
-            vitals['bso']) or bool(vitals['chg']) else False
-        properties['battery_percentage'] = float(vitals["bat"])
-        properties['battery_minutes'] = float(vitals["btt"])
-        properties['charging'] = True if int(vitals['chg']) in [1,2] else False
-        properties['signal_strength'] = float(vitals['rsi'])
-        properties['last_updated'] = datetime.datetime.strptime(
-            raw_properties["REAL_TIME_VITALS"]["data_updated_at"], '%Y-%m-%dT%H:%M:%SZ').strftime("%Y/%m/%d %H:%M:%S")
+        properties["oxygen_saturation"] = float(vitals["ox"])
+        properties["heart_rate"] = float(vitals["hr"])
+        properties["moving"] = bool(vitals["mv"])
+        properties["base_station_on"] = (
+            True if bool(vitals["bso"]) or bool(vitals["chg"]) else False
+        )
+        properties["battery_percentage"] = float(vitals["bat"])
+        properties["battery_minutes"] = float(vitals["btt"])
+        properties["charging"] = True if int(vitals["chg"]) in [1, 2] else False
+        properties["signal_strength"] = float(vitals["rsi"])
+        properties["last_updated"] = datetime.datetime.strptime(
+            raw_properties["REAL_TIME_VITALS"]["data_updated_at"], "%Y-%m-%dT%H:%M:%SZ"
+        ).strftime("%Y/%m/%d %H:%M:%S")
 
         return properties
 
-    async def update_properties(self) -> tuple[dict[str, dict], dict[str:Union[bool, str, float]]]:
+    async def update_properties(
+        self,
+    ) -> tuple[dict[str, dict], dict[str : Union[bool, str, float]]]:
         """
         Calls the Owlet api to update the properties and then returns both the raw response dict and the formatted dict from
         normalise_properties

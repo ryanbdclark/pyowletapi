@@ -24,23 +24,24 @@ Tidy up exception logging
 Create test routines
 
 ## Use
-import the base Olwet object 
+import the api and sock objects
 
 ```python
-from pyowletapi.owlet import Owlet
+from pyowletapi.api import OwletAPI
+from pyowlet.sock import Sock
 ```
 
-create an Owlet object passing your region, username and password
+create an api object passing your region, username and password, the OwletAPI will also take a aiohttp session as a keyword argument
 
 ```python
-owlet = Owlet('europe', username, password)
+api = OwletAPI('europe', username, password)
 ```
 
-you can then authenticate against the Owlet servers using this object and get a list of devices (as sock objects)
+you can then authenticate against the Owlet servers using this object and create a list of sock objects
 
 ```python
-await owlet.authenticate()
-devices = await owlet.devices()
+await api.authenticate()
+socks = {device['device']['dsn']: Sock(api, device['device']) for device in devices}
 ```
 
 to get current reading from sock call the update_properties function on each sock object

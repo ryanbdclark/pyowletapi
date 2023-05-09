@@ -4,7 +4,12 @@ import logging
 from logging import Logger
 from aiohttp.client_exceptions import ClientResponseError
 
-from .exceptions import OwletAuthenticationError, OwletConnectionError, OwletDevicesError, OwletError
+from .exceptions import (
+    OwletAuthenticationError,
+    OwletConnectionError,
+    OwletDevicesError,
+    OwletError,
+)
 
 logger: Logger = logging.getLogger(__package__)
 
@@ -50,11 +55,17 @@ class OwletAPI:
         For a provided device serial number this returns a dict of the current properties for this device from the API
     request(method: str, url: str, data: dict = None):
         method used for all the subsequent api calls after the original authenticate call, rather than repeating the same code multiple times
-        takes a method string which should either be 'GET' or 'POST', a url string for the relevant API endpoint and a dictionary containing 
+        takes a method string which should either be 'GET' or 'POST', a url string for the relevant API endpoint and a dictionary containing
         any data required to be passed to the api
     """
 
-    def __init__(self, region: str, user: str, password: str, session: aiohttp.ClientSession = None) -> None:
+    def __init__(
+        self,
+        region: str,
+        user: str,
+        password: str,
+        session: aiohttp.ClientSession = None,
+    ) -> None:
         """
         Sets all the necessary variables for the API caller based on the passed in information, if a session is not passed in then one is created
 
@@ -77,28 +88,28 @@ class OwletAPI:
         self.devices = {}
 
         self._region_info = {
-            'world': {
-                'url_mini': 'https://ayla-sso.owletdata.com/mini/',
-                'url_signin': 'https://user-field-1a2039d9.aylanetworks.com/api/v1/token_sign_in',
-                'url_base': 'https://ads-field-1a2039d9.aylanetworks.com/apiv1',
-                'apiKey': 'AIzaSyCsDZ8kWxQuLJAMVnmEhEkayH1TSxKXfGA',
-                'app_id': 'sso-prod-3g-id',
-                'app_secret': 'sso-prod-UEjtnPCtFfjdwIwxqnC0OipxRFU',
+            "world": {
+                "url_mini": "https://ayla-sso.owletdata.com/mini/",
+                "url_signin": "https://user-field-1a2039d9.aylanetworks.com/api/v1/token_sign_in",
+                "url_base": "https://ads-field-1a2039d9.aylanetworks.com/apiv1",
+                "apiKey": "AIzaSyCsDZ8kWxQuLJAMVnmEhEkayH1TSxKXfGA",
+                "app_id": "sso-prod-3g-id",
+                "app_secret": "sso-prod-UEjtnPCtFfjdwIwxqnC0OipxRFU",
             },
-            'europe': {
-                'url_mini': 'https://ayla-sso.eu.owletdata.com/mini/',
-                'url_signin': 'https://user-field-eu-1a2039d9.aylanetworks.com/api/v1/token_sign_in',
-                'url_base': 'https://ads-field-eu-1a2039d9.aylanetworks.com/apiv1',
-                'apiKey': 'AIzaSyDm6EhV70wudwN3iOSq3vTjtsdGjdFLuuM',
-                'app_id': 'OwletCare-Android-EU-fw-id',
-                'app_secret': 'OwletCare-Android-EU-JKupMPBoj_Npce_9a95Pc8Qo0Mw',
-            }
+            "europe": {
+                "url_mini": "https://ayla-sso.eu.owletdata.com/mini/",
+                "url_signin": "https://user-field-eu-1a2039d9.aylanetworks.com/api/v1/token_sign_in",
+                "url_base": "https://ads-field-eu-1a2039d9.aylanetworks.com/apiv1",
+                "apiKey": "AIzaSyDm6EhV70wudwN3iOSq3vTjtsdGjdFLuuM",
+                "app_id": "OwletCare-Android-EU-fw-id",
+                "app_secret": "OwletCare-Android-EU-JKupMPBoj_Npce_9a95Pc8Qo0Mw",
+            },
         }
 
         if self.session is None:
             self.session = aiohttp.ClientSession(raise_for_status=True)
 
-    async def authenticate(self) -> bool:
+    async def authenticate(self) -> None:
         """
         Authentiactes the user against the Owlet api using the provided details
 
@@ -108,46 +119,57 @@ class OwletAPI:
         -------
         None
         """
-        if self._region not in ['europe','world']:
+        if self._region not in ["europe", "world"]:
             raise OwletAuthenticationError("Supplied region not valid")
-        
-        self._api_url = self._region_info[self._region]['url_base']
+
+        self._api_url = self._region_info[self._region]["url_base"]
 
         try:
-            if self._auth_token is not None:
-                raise OwletError
-
-            api_key = self._region_info[self._region]['apiKey']
-            async with self.session.request("POST", f'https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key={api_key}', data={'email': self._user, 'password': self._password, 'returnSecureToken': True}, headers={
-                    'X-Android-Package': 'com.owletcare.owletcare', 'X-Android-Cert': '2A3BC26DB0B8B0792DBE28E6FFDC2598F9B12B74'}) as response:
-
+            api_key = self._region_info[self._region]["apiKey"]
+            async with self.session.request(
+                "POST",
+                f"https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key={api_key}",
+                data={
+                    "email": self._user,
+                    "password": self._password,
+                    "returnSecureToken": True,
+                },
+                headers={
+                    "X-Android-Package": "com.owletcare.owletcare",
+                    "X-Android-Cert": "2A3BC26DB0B8B0792DBE28E6FFDC2598F9B12B74",
+                },
+            ) as response:
                 id_token = await response.json()
-                id_token = id_token['idToken']
+                id_token = id_token["idToken"]
 
-                async with self.session.request("GET", self._region_info[self._region]['url_mini'], headers={
-                        'Authorization': id_token}) as response:
-
+                async with self.session.request(
+                    "GET",
+                    self._region_info[self._region]["url_mini"],
+                    headers={"Authorization": id_token},
+                ) as response:
                     mini_token = await response.json()
-                    mini_token = mini_token['mini_token']
+                    mini_token = mini_token["mini_token"]
 
-                    async with self.session.request("POST", self._region_info[self._region]['url_signin'], json={
-                        "app_id": self._region_info[self._region]['app_id'],
-                        "app_secret": self._region_info[self._region]['app_secret'],
-                        "provider": "owl_id",
-                        "token": mini_token,
-                    }) as response:
-
+                    async with self.session.request(
+                        "POST",
+                        self._region_info[self._region]["url_signin"],
+                        json={
+                            "app_id": self._region_info[self._region]["app_id"],
+                            "app_secret": self._region_info[self._region]["app_secret"],
+                            "provider": "owl_id",
+                            "token": mini_token,
+                        },
+                    ) as response:
                         response = await response.json()
-                        access_token = response['access_token']
-
-                        self.headers['Authorization'] = 'auth_token ' + \
-                            access_token
-                        self._expiry = time.time() + response['expires_in']
-
-            return True
+                        access_token = response["access_token"]
+                        self.headers["Authorization"] = "auth_token " + access_token
+                        self._expiry = time.time() + response["expires_in"]
+                        print(self._expiry)
 
         except ClientResponseError:
-            raise OwletAuthenticationError("Bad request occurred check username and password and try again, did you select the correct region?")
+            raise OwletAuthenticationError(
+                "Bad request occurred check username and password and try again, did you select the correct region?"
+            )
         except Exception as error:
             raise OwletError from error
 
@@ -173,7 +195,12 @@ class OwletAPI:
         if self._expiry <= time.time():
             self.authenticate()
 
-        return await self.request("GET", ('/devices.json'))
+        devices = await self.request("GET", ("/devices.json"))
+
+        if len(devices) < 1:
+            raise OwletDevicesError
+
+        return devices
 
     async def activate(self, device_serial: str) -> None:
         """
@@ -187,9 +214,16 @@ class OwletAPI:
         -------
         None
         """
+
+        if self._expiry <= time.time():
+            self.authenticate()
+
         data = {"datapoint": {"metadata": {}, "value": 1}}
-        await self.request("POST",
-                           f'/dsns/{device_serial}/properties/APP_ACTIVE/datapoints.json', data=data)
+        await self.request(
+            "POST",
+            f"/dsns/{device_serial}/properties/APP_ACTIVE/datapoints.json",
+            data=data,
+        )
 
     async def get_properties(self, device: str) -> dict[str:list]:
         """
@@ -205,11 +239,10 @@ class OwletAPI:
         """
         properties = {}
         await self.activate(device)
-        response = await self.request("GET", f'/dsns/{device}/properties.json')
+        response = await self.request("GET", f"/dsns/{device}/properties.json")
 
         for property in response:
-            properties[property['property']
-                       ['name']] = property['property']
+            properties[property["property"]["name"]] = property["property"]
         return properties
 
     async def request(self, method: str, url: str, data: dict = None) -> dict:
@@ -227,7 +260,9 @@ class OwletAPI:
         dict: Dictionary containing the response
         """
         try:
-            async with self.session.request(method, self._api_url+url, headers=self.headers, json=data) as response:
+            async with self.session.request(
+                method, self._api_url + url, headers=self.headers, json=data
+            ) as response:
                 return await response.json()
         except ClientResponseError as error:
             raise OwletConnectionError from error

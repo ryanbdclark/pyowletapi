@@ -1,24 +1,27 @@
-from src.pyowletapi.owlet import Owlet
+from src.pyowletapi.api import OwletAPI
+from src.pyowletapi.sock import Sock
 from src.pyowletapi.exceptions import OwletAuthenticationError, OwletConnectionError
 
 import asyncio
-import os
+import json
 
 
 async def run():
+    with open("login.json") as file:
+        data = json.load(file)
+    username = data['username']
+    password = data['password']
+    
+    api = OwletAPI('europe', username, password)
 
-    username = ""
-    password = ""
-
-    owlet = Owlet('europe', username,
-                  password)
     try:
-        status = await owlet.authenticate()
-        print(status)
-        devices = await owlet.get_devices()
-        print(devices)
+        await api.authenticate()
+        devices = await api.get_devices()
+
+        socks = {device['device']['dsn']: Sock(api, device['device']) for device in devices}
+        print(socks)
         #for i in range(10):
-        for serial, sock in devices.items():
+        for sock in socks.values():
             properties = await sock.update_properties()
             #properties = properties[1]
             print(properties[0])
@@ -27,7 +30,7 @@ async def run():
         print(err)
 
     await asyncio.sleep(60)
-    await owlet.close()
+    await api.close()
 
 if __name__ == "__main__":
     asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())

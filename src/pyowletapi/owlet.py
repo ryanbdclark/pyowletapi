@@ -23,7 +23,7 @@ class Owlet:
     region : str
         region of user account, either world or europe
     api : OwletAPI
-        An instance of an OwletAPI object that will be used to communicate with the Owlet API   
+        An instance of an OwletAPI object that will be used to communicate with the Owlet API
 
     Methods
     -------
@@ -33,10 +33,12 @@ class Owlet:
         Calls the get_devices method on the OwletAPI object, returns a dictionary with the device serial numbers as the key
         and sock objects as the values
     close:
-        Calls the close method on the OwletAPI object, closes the ClientSession   
+        Calls the close method on the OwletAPI object, closes the ClientSession
     """
 
-    def __init__(self, region: str, username: str, password: str, session: ClientSession = None) -> None:
+    def __init__(
+        self, region: str, username: str, password: str, session: ClientSession = None
+    ) -> None:
         """
         Sets all the necessary variables for the API caller based on the passed in information
 
@@ -63,13 +65,12 @@ class Owlet:
         (bool):Boolean showing the status of the authentication
         """
         try:
-            logger.info(
-                f"attempting login for {self.username}, region {self.region}")
-            if(await self._api.authenticate()):
+            logger.info(f"attempting login for {self.username}, region {self.region}")
+            if await self._api.authenticate():
                 logger.info("Authentication succesful")
                 return True
         except OwletAuthenticationError:
-                return False
+            return False
 
     async def get_devices(self) -> dict[str:Sock]:
         """
@@ -83,16 +84,20 @@ class Owlet:
         try:
             logger.info("retrieving devices")
             devices = await self._api.get_devices()
-            
+
             if len(devices) < 1:
                 raise OwletDevicesError
 
-            return {device['device']['dsn']: Sock(self._api, device['device']) for device in devices}
+            return {
+                device["device"]["dsn"]: Sock(self._api, device["device"])
+                for device in devices
+            }
         except OwletDevicesError("No devices exist for user"):
             logger.degug(
-                f"No devices exist for user {self.username}, region: {self.region}")
-            
-    async def check_device_exists(self, serial : str) -> bool:
+                f"No devices exist for user {self.username}, region: {self.region}"
+            )
+
+    async def check_device_exists(self, serial: str) -> bool:
         """
         Method that calls that checks if a specified device is valid for the current user
 
