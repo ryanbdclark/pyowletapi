@@ -194,13 +194,18 @@ class Sock:
             properties["oxygen_saturation"] = float(vitals["ox"])
             properties["heart_rate"] = float(vitals["hr"])
             properties["moving"] = bool(vitals["mv"])
+            properties["sock_connection"] = int(vitals["sc"])
+            properties["skin_temperature"] = int(vitals["st"])
             properties["base_station_on"] = (
                 True if bool(vitals["bso"]) or bool(vitals["chg"]) else False
             )
             properties["battery_percentage"] = float(vitals["bat"])
             properties["battery_minutes"] = float(vitals["btt"])
             properties["charging"] = True if int(vitals["chg"]) in [1, 2] else False
+            properties["alert_paused_status"] =  bool(vitals['aps'])
             properties["signal_strength"] = float(vitals["rsi"])
+            properties["sleep_state"] = int(vitals["ss"])
+            properties["oxygen_10_av"] = float(vitals["oxta"])
             properties["last_updated"] = datetime.datetime.strptime(
                 raw_properties["REAL_TIME_VITALS"]["data_updated_at"], "%Y-%m-%dT%H:%M:%SZ"
             ).strftime("%Y/%m/%d %H:%M:%S")
