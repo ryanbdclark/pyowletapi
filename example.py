@@ -1,6 +1,6 @@
 from src.pyowletapi.api import OwletAPI
 from src.pyowletapi.sock import Sock
-from src.pyowletapi.exceptions import OwletAuthenticationError, OwletConnectionError
+from src.pyowletapi.exceptions import OwletAuthenticationError, OwletConnectionError, OwletError, OwletPasswordError, OwletEmailError
 
 import asyncio
 import json
@@ -26,8 +26,10 @@ async def run():
             #properties = properties[1]
             print(properties[0])
             #print(properties['heart_rate'], properties['oxygen_saturation'], properties['battery_percentage'])   
-    except (OwletAuthenticationError, OwletConnectionError) as err:
+    except (OwletEmailError, OwletPasswordError, OwletError) as err:
         print(err)
+        await api.close()
+        exit()
 
     await asyncio.sleep(60)
     await api.close()

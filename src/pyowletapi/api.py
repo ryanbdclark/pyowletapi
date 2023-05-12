@@ -10,13 +10,15 @@ from .exceptions import (
     OwletConnectionError,
     OwletDevicesError,
     OwletError,
+    OwletPasswordError,
+    OwletEmailError
 )
 
 logger: Logger = logging.getLogger(__package__)
 
 
 class TokenDict(TypedDict):
-    token: str
+    api_token: str
     expiry: float
 
 class OwletAPI:
@@ -114,7 +116,7 @@ class OwletAPI:
         }
 
         if self.session is None:
-            self.session = aiohttp.ClientSession(raise_for_status=True)
+            self.session = aiohttp.ClientSession()
 
     async def authenticate(self) -> Union[None, TokenDict]:
         """
@@ -135,55 +137,95 @@ class OwletAPI:
         if self._auth_token is not None and self._expiry > time.time():
             self.headers["Authorization"] = "auth_token " + self._auth_token
         else:
-            try:
-                api_key = self._region_info[self._region]["apiKey"]
+            api_key = self._region_info[self._region]["apiKey"]
+            async with self.session.request(
+                "POST",
+                f"https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key={api_key}",
+                data={
+                    "email": self._user,
+                    "password": self._password,
+                    "returnSecureToken": True,
+                },
+                headers={
+                    "X-Android-Package": "com.owletcare.owletcare",
+                    "X-Android-Cert": "2A3BC26DB0B8B0792DBE28E6FFDC2598F9B12B74",
+                },
+            ) as response:
+                
+                response_json = await response.json()
+                if response.status != 200:
+                    match response.status:
+                        case 400:
+                            message = response_json['error']['message']
+                            match message.split(':')[0]:
+                                case 'INVALID_PASSWORD':
+                                    raise OwletPasswordError("Incorrect Password")                            
+                                case 'EMAIL_NOT_FOUND':
+                                    raise OwletEmailError("Email address not found")
+                                case 'TOO_MANY_ATTEMPTS_TRY_LATER':
+                                    raise OwletAuthenticationError("Too many incorrect attempts")
+                                case ['API key not valid. Please pass a valid API key.', "MISSING_EMAIL", "MISSING_PASSWORD"]:
+                                    #Should never happen, report anyway
+                                    raise OwletAuthenticationError("Identitytoolkit API failure 400, contact dev")
+                                case _:
+                                    raise OwletAuthenticationError("Generic indentitytoolkit error, contact dev")
+                        case 403:
+                            #Should never happen, report anyway
+                            raise OwletAuthenticationError("API failure 403, contact dev")
+                        case 404:
+                            #Should never happen, report anyway
+                            raise OwletAuthenticationError("IdentityToolkit API failure 404, contact dev")
+                        case _:
+                            raise OwletAuthenticationError(f"Generic error contact dev, {response.status}, {response.text}")
+      
+                id_token = response_json["idToken"]
+
+            async with self.session.request(
+                "GET",
+                self._region_info[self._region]["url_mini"],
+                headers={"Authorization": id_token,}
+            ) as response:
+                
+                if response.status != 200:
+                    match response.status:
+                        case 401:
+                            raise OwletAuthenticationError("Invalid id token")
+                        case _:
+                            raise OwletAuthenticationError("Generic ayla mini error, contact dev")
+                            
+
+                response_json = await response.json()
+                mini_token = response_json["mini_token"]
+
                 async with self.session.request(
                     "POST",
-                    f"https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key={api_key}",
-                    data={
-                        "email": self._user,
-                        "password": self._password,
-                        "returnSecureToken": True,
-                    },
-                    headers={
-                        "X-Android-Package": "com.owletcare.owletcare",
-                        "X-Android-Cert": "2A3BC26DB0B8B0792DBE28E6FFDC2598F9B12B74",
+                    self._region_info[self._region]["url_signin"],
+                    json={
+                        "app_id": self._region_info[self._region]["app_id"],
+                        "app_secret": self._region_info[self._region]["app_secret"],
+                        "provider": "owl_id",
+                        "token": mini_token,
                     },
                 ) as response:
-                    id_token = await response.json()
-                    id_token = id_token["idToken"]
 
-                    async with self.session.request(
-                        "GET",
-                        self._region_info[self._region]["url_mini"],
-                        headers={"Authorization": id_token},
-                    ) as response:
-                        mini_token = await response.json()
-                        mini_token = mini_token["mini_token"]
+                    response_json = await response.json()
 
-                        async with self.session.request(
-                            "POST",
-                            self._region_info[self._region]["url_signin"],
-                            json={
-                                "app_id": self._region_info[self._region]["app_id"],
-                                "app_secret": self._region_info[self._region]["app_secret"],
-                                "provider": "owl_id",
-                                "token": mini_token,
-                            },
-                        ) as response:
-                            response = await response.json()
-                            self._auth_token = response["access_token"]
-                            self.headers["Authorization"] = "auth_token " + self._auth_token
-                            self._expiry = time.time() + response["expires_in"]
+                    if response.status != 200:
+                        message = response.json['errors']
+                        match response.status:
+                            case 401:
+                                raise OwletAuthenticationError("Invalid mini token")
+                            case 404:
+                                raise OwletAuthenticationError("Ayla 404 error contact dev")
+                            case _:
+                                raise OwletAuthenticationError("Generic ayla endpoint error, contact dev")
 
-                return {'token':self._auth_token, 'expiry': self._expiry}
+                    response = await response.json()
+                    self._auth_token = response["access_token"]
+                    self.headers["Authorization"] = "auth_token " + self._auth_token
+                    self._expiry = time.time()-60 + response["expires_in"]
 
-            except ClientResponseError:
-                raise OwletAuthenticationError(
-                    "Bad request occurred check username and password and try again, did you select the correct region?"
-                )
-            except Exception as error:
-                raise OwletError from error
+                    return {'api_token':self._auth_token, 'expiry': self._expiry}
 
         return None
 
@@ -227,7 +269,7 @@ class OwletAPI:
                     devices.pop(idx)
 
         if len(devices) < 1:
-            raise OwletDevicesError
+            raise OwletDevicesError("No devices found")
 
         return devices
 
