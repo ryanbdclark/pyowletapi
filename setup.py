@@ -7,10 +7,9 @@ here = pathlib.Path(__file__).parent.resolve()
 # Get the long description from the README file
 long_description = (here / "README.md").read_text(encoding="utf-8")
 
-setup(
-   
+setup(   
     name="pyowletapi",
-    version="2023.05.19",
+    version="2023.05.20",
     description="Owlet baby montior API wrapper",
     long_description=long_description,
     long_description_content_type="text/markdown",
