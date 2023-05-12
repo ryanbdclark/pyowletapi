@@ -159,7 +159,9 @@ class OwletAPI:
                             message = response_json['error']['message']
                             match message.split(':')[0]:
                                 case 'INVALID_PASSWORD':
-                                    raise OwletPasswordError("Incorrect Password")                            
+                                    raise OwletPasswordError("Incorrect Password")
+                                case 'INVALID_EMAIL':
+                                    raise OwletEmailError("Invalid email")                          
                                 case 'EMAIL_NOT_FOUND':
                                     raise OwletEmailError("Email address not found")
                                 case 'TOO_MANY_ATTEMPTS_TRY_LATER':
