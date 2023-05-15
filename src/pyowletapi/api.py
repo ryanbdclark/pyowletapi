@@ -289,7 +289,7 @@ class OwletAPI:
         """
 
         if self._expiry <= time.time():
-            self.authenticate()
+            await self.authenticate()
 
         data = {"datapoint": {"metadata": {}, "value": 1}}
         await self.request(
