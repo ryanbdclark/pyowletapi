@@ -83,10 +83,10 @@ class Sock:
         self.raw_properties = {}
         self.properties = {}
 
-
     @property
     def version(self) -> int:
         return self._version
+
     @property
     def name(self) -> str:
         return self._name
@@ -190,6 +190,17 @@ class Sock:
         properties["sock_off"] = bool(raw_properties["SOCK_OFF"]["value"])
 
         if self._version == 3:
+            # Additional attributes not implemented
+            # Current alerts mask - "alrt" int
+            # Firmware update status - "ota" int
+            # Sock readings flag - "srf" int
+            # Soft brick status - "sb" int
+            # Movement bucket - "mvb" int
+            # Wellness alert - "onm" int
+            # Hardware version - "hw" String
+            # Monitoring start time - "mst" int
+            # Base station battery status - "bsb" int
+
             vitals = json.loads(raw_properties["REAL_TIME_VITALS"]["value"])
             properties["oxygen_saturation"] = float(vitals["ox"])
             properties["heart_rate"] = float(vitals["hr"])
@@ -202,22 +213,23 @@ class Sock:
             properties["battery_percentage"] = float(vitals["bat"])
             properties["battery_minutes"] = float(vitals["btt"])
             properties["charging"] = True if int(vitals["chg"]) in [1, 2] else False
-            properties["alert_paused_status"] =  bool(vitals['aps'])
+            properties["alert_paused_status"] = bool(vitals["aps"])
             properties["signal_strength"] = float(vitals["rsi"])
             properties["sleep_state"] = int(vitals["ss"])
             properties["oxygen_10_av"] = float(vitals["oxta"])
             properties["last_updated"] = datetime.datetime.strptime(
-                raw_properties["REAL_TIME_VITALS"]["data_updated_at"], "%Y-%m-%dT%H:%M:%SZ"
+                raw_properties["REAL_TIME_VITALS"]["data_updated_at"],
+                "%Y-%m-%dT%H:%M:%SZ",
             ).strftime("%Y/%m/%d %H:%M:%S")
 
         return properties
 
     async def check_version(self) -> None:
-        version=0
+        version = 0
         if "REAL_TIME_VITALS" in self.raw_properties:
-            version=3
+            version = 3
         elif "CHARGE_STATUS" in self.raw_properties:
-            version= 2
+            version = 2
         self._version = version
 
     async def update_properties(

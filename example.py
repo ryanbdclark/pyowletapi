@@ -16,21 +16,20 @@ async def run():
 
     try:
         print(await api.authenticate())
+        
         devices = await api.get_devices()
 
         socks = {device['device']['dsn']: Sock(api, device['device']) for device in devices}
         
         for sock in socks.values():
-            print(sock._api._expiry)
-            print(sock._api._auth_token)
-            sock._api._expiry = 0
+            print(sock._api.tokens)
         #for i in range(10):
         for sock in socks.values():
             properties = await sock.update_properties()
             #properties = properties[1]
-            #print(properties[0])
-            print(sock._api._expiry)
-            print(sock._api._auth_token)
+            print(properties[0])
+            print(sock._api.tokens_changed)
+            print(sock._api.tokens)
 
             #print(properties['heart_rate'], properties['oxygen_saturation'], properties['battery_percentage'])   
     except (OwletEmailError, OwletPasswordError, OwletError) as err:
