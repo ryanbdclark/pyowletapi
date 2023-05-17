@@ -3,6 +3,7 @@ PROPERTIES = {
         "high_oxygen_alert": "HIGH_OX_ALRT",
         "low_battery_alert": "LOW_BATT_ALRT",
         "low_heart_rate_alert": "LOW_HR_ALRT",
+        "high_heart_rate_alert": "HIGH_HR_ALRT",
         "low_oxygen_alert": "LOW_OX_ALRT",
         "ppg_log_file": "PPG_LOG_FILE",
         "firmware_update_available": "FW_UPDATE_STATUS",
