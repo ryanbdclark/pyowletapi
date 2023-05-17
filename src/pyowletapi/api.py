@@ -13,6 +13,7 @@ from .exceptions import (
     OwletPasswordError,
     OwletEmailError,
 )
+from .const import REGION_INFO
 
 logger: Logger = logging.getLogger(__package__)
 
@@ -101,28 +102,7 @@ class OwletAPI:
         self.headers = {}
         self.devices = {}
 
-        self._region_info = {
-            "world": {
-                "url_mini": "https://ayla-sso.owletdata.com/mini/",
-                "url_signin": "https://user-field-1a2039d9.aylanetworks.com/api/v1/token_sign_in",
-                "url_signin": "https://user-field-1a2039d9.aylanetworks.com/users/refresh_token.json",
-                "url_base": "https://ads-field-1a2039d9.aylanetworks.com/apiv1",
-                "apiKey": "AIzaSyCsDZ8kWxQuLJAMVnmEhEkayH1TSxKXfGA",
-                "app_id": "sso-prod-3g-id",
-                "app_secret": "sso-prod-UEjtnPCtFfjdwIwxqnC0OipxRFU",
-            },
-            "europe": {
-                "url_mini": "https://ayla-sso.eu.owletdata.com/mini/",
-                "url_signin": "https://user-field-eu-1a2039d9.aylanetworks.com/api/v1/token_sign_in",
-                "url_refresh": "https://user-field-eu-1a2039d9.aylanetworks.com/users/refresh_token.json",
-                "url_base": "https://ads-field-eu-1a2039d9.aylanetworks.com/apiv1",
-                "apiKey": "AIzaSyDm6EhV70wudwN3iOSq3vTjtsdGjdFLuuM",
-                "app_id": "OwletCare-Android-EU-fw-id",
-                "app_secret": "OwletCare-Android-EU-JKupMPBoj_Npce_9a95Pc8Qo0Mw",
-            },
-        }
-
-        self._api_url = self._region_info[self._region]["url_base"]
+        self._api_url = REGION_INFO[self._region]["url_base"]
 
         if self._region not in ["europe", "world"]:
             raise OwletAuthenticationError("Supplied region not valid")
@@ -135,15 +115,19 @@ class OwletAPI:
         if tokens and tokens == self.tokens:
             tokens_changed = False
         elif tokens:
-            tokens_changed = True        
+            tokens_changed = True
         self._tokens_changed = False
 
         if tokens_changed:
             return self.tokens
-        
+
     @property
     def tokens(self) -> TokenDict:
-        return {"api_token": self._auth_token, "expiry": self._expiry, "refresh": self._refresh}
+        return {
+            "api_token": self._auth_token,
+            "expiry": self._expiry,
+            "refresh": self._refresh,
+        }
 
     async def authenticate(self) -> Union[None, TokenDict]:
         """
@@ -163,7 +147,7 @@ class OwletAPI:
         if self._refresh is not None:
             async with self.session.request(
                 "POST",
-                self._region_info[self._region]["url_refresh"],
+                REGION_INFO[self._region]["url_refresh"],
                 data={"user": {"refresh_token": self._refresh}},
             ) as response:
                 response_json = await response.json()
@@ -191,7 +175,7 @@ class OwletAPI:
                 }
 
         elif self._user is not None and self._password is not None:
-            api_key = self._region_info[self._region]["apiKey"]
+            api_key = REGION_INFO[self._region]["apiKey"]
             async with self.session.request(
                 "POST",
                 f"https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key={api_key}",
@@ -253,7 +237,7 @@ class OwletAPI:
 
             async with self.session.request(
                 "GET",
-                self._region_info[self._region]["url_mini"],
+                REGION_INFO[self._region]["url_mini"],
                 headers={
                     "Authorization": id_token,
                 },
@@ -272,10 +256,10 @@ class OwletAPI:
 
                 async with self.session.request(
                     "POST",
-                    self._region_info[self._region]["url_signin"],
+                    REGION_INFO[self._region]["url_signin"],
                     json={
-                        "app_id": self._region_info[self._region]["app_id"],
-                        "app_secret": self._region_info[self._region]["app_secret"],
+                        "app_id": REGION_INFO[self._region]["app_id"],
+                        "app_secret": REGION_INFO[self._region]["app_secret"],
                         "provider": "owl_id",
                         "token": mini_token,
                     },
@@ -412,12 +396,10 @@ class OwletAPI:
         if self._expiry <= time.time():
             await self.authenticate()
 
-        try:
-            async with self.session.request(
-                method, self._api_url + url, headers=self.headers, json=data
-            ) as response:
-                return await response.json()
-        except ClientResponseError as error:
-            raise OwletConnectionError from error
-        except Exception as error:
-            raise OwletError from error
+        async with self.session.request(
+            method, self._api_url + url, headers=self.headers, json=data
+        ) as response:
+            if response.status not in (200, 201):
+                raise OwletConnectionError("Error sending request")
+
+            return await response.json()

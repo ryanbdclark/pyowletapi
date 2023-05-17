@@ -3,11 +3,10 @@ from logging import Logger
 import json
 import datetime
 from .api import OwletAPI
+from .const import PROPERTIES, VITALS
 from typing import Union
 
 logger: Logger = logging.getLogger(__package__)
-
-CHARGING_STATUSES = ["NOT CHARGING", "CHARGING", "CHARGED"]
 
 
 class Sock:
@@ -67,7 +66,6 @@ class Sock:
         data (dict):Data returned from the Owlet API showing the details of the sock
         """
         self._api = api
-
         self._name = data["product_name"]
         self._model = data["model"]
         self._serial = data["dsn"]
@@ -80,8 +78,12 @@ class Sock:
         self._manuf_model = data["manuf_model"]
         self._version = None
 
-        self.raw_properties = {}
-        self.properties = {}
+        self._raw_properties = {}
+        self._properties = {}
+
+    @property
+    def api(self) -> OwletAPI:
+        return self._api
 
     @property
     def version(self) -> int:
@@ -127,6 +129,14 @@ class Sock:
     def manuf_model(self) -> str:
         return self._manuf_model
 
+    @property
+    def properties(self) -> dict[str:str]:
+        return self._properties
+
+    @property
+    def raw_properties(self) -> dict:
+        return self._raw_properties
+
     def get_property(self, property: str) -> str:
         """
         Returns the specific property based on the property argument passed in
@@ -139,21 +149,9 @@ class Sock:
         -------
         (str):Request property as a string
         """
-        return self.properties[property]
+        return self._properties[property]
 
-    def get_properties(self) -> dict[str:str]:
-        """
-        Returns all properties for the Owlet sock object
-
-        Returns
-        -------
-        (dict):Request properties as a dict
-        """
-        return self.properties
-
-    async def normalise_properties(
-        self, raw_properties: dict[str:dict]
-    ) -> dict[str : Union[bool, str, float]]:
+    async def normalise_properties(self) -> dict[str : Union[bool, str, float]]:
         """
         Takes the raw properties dictionary returned from the API and formats it into another dict that is more stripped down and easier to work with
 
@@ -166,69 +164,38 @@ class Sock:
             (dict):Returns the stripped down properties as a dict
         """
         properties = {}
-        properties["app_active"] = bool(raw_properties["APP_ACTIVE"]["value"])
 
-        properties["high_heart_rate_alert"] = bool(
-            raw_properties["HIGH_HR_ALRT"]["value"]
-        )
-        properties["high_oxygen_alert"] = bool(raw_properties["HIGH_OX_ALRT"]["value"])
-        properties["low_battery_alert"] = bool(raw_properties["LOW_BATT_ALRT"]["value"])
-        properties["low_heart_rate_alert"] = bool(
-            raw_properties["LOW_HR_ALRT"]["value"]
-        )
-        properties["low_oxygen_alert"] = bool(raw_properties["LOW_OX_ALRT"]["value"])
-        properties["ppg_log_file"] = bool(raw_properties["PPG_LOG_FILE"]["value"])
-        properties["firmware_update_available"] = bool(
-            raw_properties["FW_UPDATE_STATUS"]["value"]
-        )
-        properties["lost_power_alert"] = bool(
-            raw_properties["LOST_POWER_ALRT"]["value"]
-        )
-        properties["sock_disconnected"] = bool(
-            raw_properties["SOCK_DISCON_ALRT"]["value"]
-        )
-        properties["sock_off"] = bool(raw_properties["SOCK_OFF"]["value"])
+        for type, properties_tmp in PROPERTIES.items():
+            properties = {
+                key: type(self._raw_properties[property]["value"])
+                for key, property in properties_tmp.items()
+            }
 
         if self._version == 3:
-            # Additional attributes not implemented
-            # Current alerts mask - "alrt" int
-            # Firmware update status - "ota" int
-            # Sock readings flag - "srf" int
-            # Soft brick status - "sb" int
-            # Movement bucket - "mvb" int
-            # Wellness alert - "onm" int
-            # Hardware version - "hw" String
-            # Monitoring start time - "mst" int
-            # Base station battery status - "bsb" int
+            vitals = json.loads(self._raw_properties["REAL_TIME_VITALS"]["value"])
 
-            vitals = json.loads(raw_properties["REAL_TIME_VITALS"]["value"])
-            properties["oxygen_saturation"] = float(vitals["ox"])
-            properties["heart_rate"] = float(vitals["hr"])
-            properties["moving"] = bool(vitals["mv"])
-            properties["sock_connection"] = int(vitals["sc"])
-            properties["skin_temperature"] = int(vitals["st"])
-            properties["base_station_on"] = (
-                True if bool(vitals["bso"]) or bool(vitals["chg"]) else False
-            )
-            properties["battery_percentage"] = float(vitals["bat"])
-            properties["battery_minutes"] = float(vitals["btt"])
-            properties["charging"] = True if int(vitals["chg"]) in [1, 2] else False
-            properties["alert_paused_status"] = bool(vitals["aps"])
-            properties["signal_strength"] = float(vitals["rsi"])
-            properties["sleep_state"] = int(vitals["ss"])
-            properties["oxygen_10_av"] = float(vitals["oxta"])
-            properties["last_updated"] = datetime.datetime.strptime(
-                raw_properties["REAL_TIME_VITALS"]["data_updated_at"],
-                "%Y-%m-%dT%H:%M:%SZ",
-            ).strftime("%Y/%m/%d %H:%M:%S")
+            for type, vitals_tmp in VITALS.items():
+                for key, property in vitals_tmp.items():
+                    match key:
+                        case "base_station_on":
+                            properties[key] = bool(vitals["bso"]) or bool(vitals["chg"])
+                        case "last_updated":
+                            properties[key] = datetime.datetime.strptime(
+                                self._raw_properties["REAL_TIME_VITALS"][
+                                    "data_updated_at"
+                                ],
+                                "%Y-%m-%dT%H:%M:%SZ",
+                            ).strftime("%Y/%m/%d %H:%M:%S")
+                        case _:
+                            properties[key] = type(vitals[property])
 
         return properties
 
-    async def check_version(self) -> None:
+    async def _check_version(self) -> None:
         version = 0
-        if "REAL_TIME_VITALS" in self.raw_properties:
+        if "REAL_TIME_VITALS" in self._raw_properties:
             version = 3
-        elif "CHARGE_STATUS" in self.raw_properties:
+        elif "CHARGE_STATUS" in self._raw_properties:
             version = 2
         self._version = version
 
@@ -244,9 +211,9 @@ class Sock:
         (tuple):Tuple containing two dictionaries, one with the raw json response from the API and another with the stripped down properties from normalise_properties
         """
         logging.info(f"Updating properties for device {self.serial}")
-        self.raw_properties = await self._api.get_properties(self.serial)
+        self._raw_properties = await self._api.get_properties(self.serial)
         if self._version is None:
-            await self.check_version()
-        self.properties = await self.normalise_properties(self.raw_properties)
+            await self._check_version()
+        self._properties = await self.normalise_properties()
 
-        return (self.raw_properties, self.properties)
+        return (self._raw_properties, self._properties)

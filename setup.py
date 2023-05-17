@@ -1,4 +1,3 @@
-
 from setuptools import setup, find_packages
 import pathlib
 
@@ -7,23 +6,21 @@ here = pathlib.Path(__file__).parent.resolve()
 # Get the long description from the README file
 long_description = (here / "README.md").read_text(encoding="utf-8")
 
-setup(   
+setup(
     name="pyowletapi",
-    version="2023.05.22",
+    version="2023.05.24",
     description="Owlet baby montior API wrapper",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/RyanClark123/pyowletapi",
     author="Ryan Clark",
-    classifiers=[ 
-        "License :: OSI Approved :: MIT License",        
+    classifiers=[
+        "License :: OSI Approved :: MIT License",
         "Programming Language :: Python :: 3.9",
     ],
-    
     keywords="owlet, api, baby",
-    package_dir={"": "src"}, 
-    packages=find_packages(where="src"), 
+    package_dir={"": "src"},
+    packages=find_packages(where="src"),
     python_requires=">=3.10",
-    
-    install_requires=["aiohttp"], 
+    install_requires=["aiohttp"],
 )
