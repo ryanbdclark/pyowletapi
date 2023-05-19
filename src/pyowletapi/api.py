@@ -21,6 +21,7 @@ logger: Logger = logging.getLogger(__package__)
 class TokenDict(TypedDict):
     api_token: str
     expiry: float
+    refresh: str
 
 
 class OwletAPI:
@@ -86,8 +87,9 @@ class OwletAPI:
         region (str):Region of user account, either world or europe
         user (str):Username (email) of user logging in
         password (str):Password of user logging in
-        auth_token (str):Once authentiacted the auth token will be stored in the object to be used for future api calls
+        token (str):Once authentiacted the auth token will be stored in the object to be used for future api calls
         expiry (str):The expiry date of the connection is stored such that if the connection is expired the object reauthenticates
+        refresh (str):The refresh token for the api, this can be passed if in known, if not passed then the api will authenticate and store the new refresh token for future use
         session (aiohttp.ClientSession), optional:The aiohttp session is stored to be called against
         """
         self._region = region
@@ -110,24 +112,184 @@ class OwletAPI:
         if self.session is None:
             self.session = aiohttp.ClientSession()
 
-    async def tokens_changed(self, tokens: dict = None) -> Union[None, TokenDict]:
-        tokens_changed = self._tokens_changed
-        if tokens and tokens == self.tokens:
-            tokens_changed = False
-        elif tokens:
-            tokens_changed = True
-        self._tokens_changed = False
-
-        if tokens_changed:
-            return self.tokens
-
     @property
     def tokens(self) -> TokenDict:
+        """Returns a TokenDict object with current auth token, expiry and refresh token"""
         return {
             "api_token": self._auth_token,
             "expiry": self._expiry,
             "refresh": self._refresh,
         }
+
+    async def password_verification(self) -> None:
+        """
+        Will attempt to use the users username and password to login to the identitytoolkit api if authentication fails
+        for any reason the relevent error is thrown, otherwise the returned refresh token will be stored
+        """
+        api_key = REGION_INFO[self._region]["apiKey"]
+        async with self.session.request(
+            "POST",
+            f"https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key={api_key}",
+            data={
+                "email": self._user,
+                "password": self._password,
+                "returnSecureToken": True,
+            },
+            headers={
+                "X-Android-Package": "com.owletcare.owletcare",
+                "X-Android-Cert": "2A3BC26DB0B8B0792DBE28E6FFDC2598F9B12B74",
+            },
+        ) as response:
+            response_json = await response.json()
+            if response.status != 200:
+                match response.status:
+                    case 400:
+                        message = response_json["error"]["message"]
+                        match message.split(":")[0]:
+                            case "INVALID_PASSWORD":
+                                raise OwletPasswordError("Incorrect Password")
+                            case "INVALID_EMAIL":
+                                raise OwletEmailError("Invalid email")
+                            case "EMAIL_NOT_FOUND":
+                                raise OwletEmailError("Email address not found")
+                            case "TOO_MANY_ATTEMPTS_TRY_LATER":
+                                raise OwletAuthenticationError(
+                                    "Too many incorrect attempts"
+                                )
+                            case [
+                                "API key not valid. Please pass a valid API key.",
+                                "MISSING_EMAIL",
+                                "MISSING_PASSWORD",
+                            ]:
+                                # Should never happen, report anyway
+                                raise OwletAuthenticationError(
+                                    "Identitytoolkit API failure 400, contact dev"
+                                )
+                            case _:
+                                raise OwletAuthenticationError(
+                                    "Generic indentitytoolkit error, contact dev"
+                                )
+                    case 403:
+                        # Should never happen, report anyway
+                        raise OwletAuthenticationError("API failure 403, contact dev")
+                    case 404:
+                        # Should never happen, report anyway
+                        raise OwletAuthenticationError(
+                            "IdentityToolkit API failure 404, contact dev"
+                        )
+                    case _:
+                        raise OwletAuthenticationError(
+                            f"Generic error contact dev, {response.status}, {response.text}"
+                        )
+            self._refresh = response_json["refreshToken"]
+
+    async def get_mini_token(self, id_token) -> str:
+        """
+        Attempts to authenticate against the ayla mini token service with the given ID token
+        any response other than a 200 response will throw an error.
+
+        Returns
+        --------------------
+        (str): String with the returned mini token, for use with final sign in step
+        """
+        async with self.session.request(
+            "GET",
+            REGION_INFO[self._region]["url_mini"],
+            headers={
+                "Authorization": id_token,
+            },
+        ) as response:
+            if response.status != 200:
+                match response.status:
+                    case 401:
+                        raise OwletAuthenticationError("Invalid id token")
+                    case _:
+                        raise OwletAuthenticationError(
+                            "Generic ayla mini error, contact dev"
+                        )
+
+            response_json = await response.json()
+            return response_json["mini_token"]
+
+    async def token_sign_in(self, mini_token) -> TokenDict:
+        """
+        Will use the provided mini token to attempt to authenticate against the owlet endpoint, anything other than a 200 response
+        will throw an error. If succesful the token dict containing the auth_token, expiry and refresh token will be returned.
+
+        Returns
+        ----------------------
+        (TokenDict): Dictionary containing the api token, token expiry time and refresh token
+        """
+        async with self.session.request(
+            "POST",
+            REGION_INFO[self._region]["url_signin"],
+            json={
+                "app_id": REGION_INFO[self._region]["app_id"],
+                "app_secret": REGION_INFO[self._region]["app_secret"],
+                "provider": "owl_id",
+                "token": mini_token,
+            },
+        ) as response:
+            response_json = await response.json()
+
+            if response.status != 200:
+                match response.status:
+                    case 401:
+                        raise OwletAuthenticationError("Invalid mini token")
+                    case 404:
+                        raise OwletAuthenticationError("Ayla 404 error contact dev")
+                    case _:
+                        raise OwletAuthenticationError(
+                            "Generic ayla endpoint error, contact dev"
+                        )
+            self._auth_token = response_json["access_token"]
+            self._expiry = time.time() - 60 + response_json["expires_in"]
+
+            self.headers["Authorization"] = "auth_token " + self._auth_token
+
+            return {
+                "api_token": self._auth_token,
+                "expiry": self._expiry,
+                "refresh": self._refresh,
+            }
+
+    async def refresh_authentication(
+        self,
+    ) -> TokenDict:
+        """
+        Will attempt to refresh authentication when expired, if no refresh token exists or authentication fails then the relevent
+        error will be thrown. On succesful authentication a TokenDict will be returned
+
+        Returns
+        ------------------
+        (TokenDict): Dictionary containing the new api token, token expiry time and new refresh token
+        """
+        if self._refresh:
+            api_key = REGION_INFO[self._region]["apiKey"]
+            async with self.session.request(
+                "POST",
+                f"https://securetoken.googleapis.com/v1/token?key={api_key}",
+                data={"grantType": "refresh_token", "refreshToken": self._refresh},
+                headers={
+                    "X-Android-Package": "com.owletcare.owletcare",
+                    "X-Android-Cert": "2A3BC26DB0B8B0792DBE28E6FFDC2598F9B12B74",
+                },
+            ) as response:
+                response_json = await response.json()
+
+                if response.status != 200:
+                    match response.status:
+                        case 401:
+                            raise OwletAuthenticationError("Refresh token not valid")
+                        case _:
+                            raise OwletError("Generic refresh error, contact dev")
+
+                self._refresh = response_json["refresh_token"]
+
+                mini_token = await self.get_mini_token(response_json["id_token"])
+
+                return await self.token_sign_in(mini_token)
+        raise OwletAuthenticationError("No refresh token supplied")
 
     async def authenticate(self) -> Union[None, TokenDict]:
         """
@@ -140,163 +302,26 @@ class OwletAPI:
         None: if auth_token and expiry in object are ok then returns none
         dict: If auth token generated then dict with the new token returned
         """
-        if self._auth_token is not None and self._expiry > time.time():
-            self.headers["Authorization"] = "auth_token " + self._auth_token
-            return None
+        if self._auth_token is None and self._refresh is None:
+            if self._user is None or self._password is None:
+                return OwletAuthenticationError("Username or password not supplied")
 
-        if self._refresh is not None:
-            async with self.session.request(
-                "POST",
-                REGION_INFO[self._region]["url_refresh"],
-                data={"user": {"refresh_token": self._refresh}},
-            ) as response:
-                response_json = await response.json()
+            await self.password_verification()
 
-                if response.status != 200:
-                    match response.status:
-                        case 401:
-                            raise OwletAuthenticationError("Refresh token not valid")
-                        case _:
-                            raise OwletError("Generic refresh error, contact dev")
+        if self._auth_token is None or self._expiry <= time.time():
+            return await self.refresh_authentication()
 
-                self._auth_token = response_json["access_token"]
-                self._expiry = time.time() - 60 + response["expires_in"]
-                self._refresh = response_json["refresh_token"]
-                self.headers["Authorization"] = "auth_token " + self._auth_token
-                if self._has_authenticated:
-                    self._tokens_changed = True
+        self.headers["Authorization"] = "auth_token " + self._auth_token
 
-                self._has_authenticated = True
+        return await self.validate_authentication()
 
-                return {
-                    "api_token": self._auth_token,
-                    "expiry": self._expiry,
-                    "refresh": self._refresh,
-                }
-
-        elif self._user is not None and self._password is not None:
-            api_key = REGION_INFO[self._region]["apiKey"]
-            async with self.session.request(
-                "POST",
-                f"https://www.googleapis.com/identitytoolkit/v3/relyingparty/verifyPassword?key={api_key}",
-                data={
-                    "email": self._user,
-                    "password": self._password,
-                    "returnSecureToken": True,
-                },
-                headers={
-                    "X-Android-Package": "com.owletcare.owletcare",
-                    "X-Android-Cert": "2A3BC26DB0B8B0792DBE28E6FFDC2598F9B12B74",
-                },
-            ) as response:
-                response_json = await response.json()
-                if response.status != 200:
-                    match response.status:
-                        case 400:
-                            message = response_json["error"]["message"]
-                            match message.split(":")[0]:
-                                case "INVALID_PASSWORD":
-                                    raise OwletPasswordError("Incorrect Password")
-                                case "INVALID_EMAIL":
-                                    raise OwletEmailError("Invalid email")
-                                case "EMAIL_NOT_FOUND":
-                                    raise OwletEmailError("Email address not found")
-                                case "TOO_MANY_ATTEMPTS_TRY_LATER":
-                                    raise OwletAuthenticationError(
-                                        "Too many incorrect attempts"
-                                    )
-                                case [
-                                    "API key not valid. Please pass a valid API key.",
-                                    "MISSING_EMAIL",
-                                    "MISSING_PASSWORD",
-                                ]:
-                                    # Should never happen, report anyway
-                                    raise OwletAuthenticationError(
-                                        "Identitytoolkit API failure 400, contact dev"
-                                    )
-                                case _:
-                                    raise OwletAuthenticationError(
-                                        "Generic indentitytoolkit error, contact dev"
-                                    )
-                        case 403:
-                            # Should never happen, report anyway
-                            raise OwletAuthenticationError(
-                                "API failure 403, contact dev"
-                            )
-                        case 404:
-                            # Should never happen, report anyway
-                            raise OwletAuthenticationError(
-                                "IdentityToolkit API failure 404, contact dev"
-                            )
-                        case _:
-                            raise OwletAuthenticationError(
-                                f"Generic error contact dev, {response.status}, {response.text}"
-                            )
-
-                id_token = response_json["idToken"]
-
-            async with self.session.request(
-                "GET",
-                REGION_INFO[self._region]["url_mini"],
-                headers={
-                    "Authorization": id_token,
-                },
-            ) as response:
-                if response.status != 200:
-                    match response.status:
-                        case 401:
-                            raise OwletAuthenticationError("Invalid id token")
-                        case _:
-                            raise OwletAuthenticationError(
-                                "Generic ayla mini error, contact dev"
-                            )
-
-                response_json = await response.json()
-                mini_token = response_json["mini_token"]
-
-                async with self.session.request(
-                    "POST",
-                    REGION_INFO[self._region]["url_signin"],
-                    json={
-                        "app_id": REGION_INFO[self._region]["app_id"],
-                        "app_secret": REGION_INFO[self._region]["app_secret"],
-                        "provider": "owl_id",
-                        "token": mini_token,
-                    },
-                ) as response:
-                    response_json = await response.json()
-
-                    if response.status != 200:
-                        message = response.json["errors"]
-                        match response.status:
-                            case 401:
-                                raise OwletAuthenticationError("Invalid mini token")
-                            case 404:
-                                raise OwletAuthenticationError(
-                                    "Ayla 404 error contact dev"
-                                )
-                            case _:
-                                raise OwletAuthenticationError(
-                                    "Generic ayla endpoint error, contact dev"
-                                )
-
-                    response = await response.json()
-                    self._auth_token = response["access_token"]
-                    self.headers["Authorization"] = "auth_token " + self._auth_token
-                    self._expiry = time.time() - 60 + response["expires_in"]
-                    self._refresh = response["refresh_token"]
-                    if self._has_authenticated:
-                        self._tokens_changed = True
-
-                    self._has_authenticated = True
-
-                    return {
-                        "api_token": self._auth_token,
-                        "expiry": self._expiry,
-                        "refresh": self._refresh,
-                    }
-
-        raise OwletAuthenticationError("Username or password required")
+    async def validate_authentication(self) -> None:
+        async with self.session.request(
+            "GET", self._api_url + "/devices.json", headers=self.headers
+        ) as response:
+            if response.status not in (200, 201):
+                self._auth_token = None
+                return await self.authenticate()
 
     async def close(self) -> None:
         """
@@ -308,6 +333,14 @@ class OwletAPI:
         """
         if self.session:
             await self.session.close()
+
+    async def check_tokens(self, temp_tokens) -> Union[None, TokenDict]:
+        """
+        Checks if supplied tokens are different to the current tokens, if they are then return the current tokens as a TokenDict
+        otherwise return None
+        """
+        if temp_tokens != self.tokens:
+            return self.tokens
 
     async def get_devices(self, versions: list[int] = None) -> dict:
         """
@@ -321,10 +354,14 @@ class OwletAPI:
         ------
         dict: Dictionary containing the json response
         """
+
+        temp_tokens = self.tokens
+
         devices = await self.request("GET", ("/devices.json"))
         if versions:
             for idx, device in enumerate(devices):
                 properties = await self.get_properties(device["device"]["dsn"])
+                properties = properties["response"]
                 version = 0
                 if "REAL_TIME_VITALS" in properties:
                     version = 3
@@ -336,7 +373,7 @@ class OwletAPI:
         if len(devices) < 1:
             raise OwletDevicesError("No devices found")
 
-        return devices
+        return {"response": devices, "tokens": await self.check_tokens(temp_tokens)}
 
     async def activate(self, device_serial: str) -> None:
         """
@@ -370,13 +407,15 @@ class OwletAPI:
         ------
         (dict):A dictionary containing all the current properties for the request device
         """
+        temp_tokens = self.tokens
+
         properties = {}
         await self.activate(device)
         response = await self.request("GET", f"/dsns/{device}/properties.json")
 
         for property in response:
             properties[property["property"]["name"]] = property["property"]
-        return properties
+        return {"response": properties, "tokens": await self.check_tokens(temp_tokens)}
 
     async def request(self, method: str, url: str, data: dict = None) -> dict:
         """
@@ -393,8 +432,7 @@ class OwletAPI:
         dict: Dictionary containing the response
         """
 
-        if self._expiry <= time.time():
-            await self.authenticate()
+        await self.validate_authentication()
 
         async with self.session.request(
             method, self._api_url + url, headers=self.headers, json=data

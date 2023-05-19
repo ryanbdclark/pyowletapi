@@ -2,12 +2,17 @@ import logging
 from logging import Logger
 import json
 import datetime
-from .api import OwletAPI
+from .api import OwletAPI, TokenDict
 from .const import PROPERTIES, VITALS
-from typing import Union
+from typing import Union, TypedDict
 
 logger: Logger = logging.getLogger(__package__)
 
+
+class PropertiesDict(TypedDict):
+    raw_properties: dict
+    properties: dict
+    tokens: Union[None, TokenDict]
 
 class Sock:
     """
@@ -201,19 +206,25 @@ class Sock:
 
     async def update_properties(
         self,
-    ) -> tuple[dict[str, dict], dict[str : Union[bool, str, float]]]:
+    ) -> PropertiesDict:
         """
-        Calls the Owlet api to update the properties and then returns both the raw response dict and the formatted dict from
-        normalise_properties
+        Calls the Owlet api to update the properties and then returns the raw response dict, the formatted dict from
+        normalise_properties and any new api tokens if they have changed
 
         Returns
         -------
-        (tuple):Tuple containing two dictionaries, one with the raw json response from the API and another with the stripped down properties from normalise_properties
+        (dict):Dictionary containing three dictionaries, one with the raw json response from the API and another with the stripped down
+        properties from normalise_properties, the third will contain the new api tokens if they have changed, if they haven't changed this will be None
         """
         logging.info(f"Updating properties for device {self.serial}")
-        self._raw_properties = await self._api.get_properties(self.serial)
+        properties = await self._api.get_properties(self.serial)
+        self._raw_properties = properties["response"]
         if self._version is None:
             await self._check_version()
         self._properties = await self.normalise_properties()
 
-        return (self._raw_properties, self._properties)
+        return {
+            "raw_properties": self._raw_properties,
+            "properties": self._properties,
+            "tokens": properties["tokens"],
+        }
