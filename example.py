@@ -1,4 +1,4 @@
-from src.pyowletapi.api import OwletAPI
+from pyowletapi.api import OwletAPI
 from src.pyowletapi.sock import Sock
 from src.pyowletapi.exceptions import (
     OwletAuthenticationError,
@@ -18,15 +18,16 @@ async def run():
     username = data["username"]
     password = data["password"]
 
-    api = OwletAPI("europe", username, password)
+    api = OwletAPI(
+        "europe",username, password)
 
     try:
-        await api.authenticate()
+        print(await api.authenticate())
 
         devices = await api.get_devices()
 
         socks = {
-            device["device"]["dsn"]: Sock(api, device["device"]) for device in devices
+            device["device"]["dsn"]: Sock(api, device["device"]) for device in devices['response']
         }
 
         # for sock in socks.values():
@@ -35,7 +36,7 @@ async def run():
         for sock in socks.values():
             properties = await sock.update_properties()
             # properties = properties[1]
-            print(properties[0])
+            print(properties['properties'])
             # print(sock._api.tokens_changed)
             # print(sock._api.tokens)
 
