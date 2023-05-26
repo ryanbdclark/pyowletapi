@@ -18,14 +18,17 @@ async def run():
     username = data["username"]
     password = data["password"]
 
+    #username = "sample@gmail.com"
+    password = "sample"
+
     api = OwletAPI(
         "europe",username, password)
 
     try:
-        print(await api.authenticate())
+        await api.authenticate()
 
         devices = await api.get_devices()
-
+        print(devices)
         socks = {
             device["device"]["dsn"]: Sock(api, device["device"]) for device in devices['response']
         }
@@ -36,7 +39,7 @@ async def run():
         for sock in socks.values():
             properties = await sock.update_properties()
             # properties = properties[1]
-            print(properties['properties'])
+            #print(properties)
             # print(sock._api.tokens_changed)
             # print(sock._api.tokens)
 

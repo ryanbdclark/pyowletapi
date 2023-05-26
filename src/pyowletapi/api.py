@@ -6,6 +6,7 @@ from aiohttp.client_exceptions import ClientResponseError
 from typing import Union, TypedDict
 
 from .exceptions import (
+    OwletCredentialsError,
     OwletAuthenticationError,
     OwletConnectionError,
     OwletDevicesError,
@@ -142,6 +143,8 @@ class OwletAPI:
         ) as response:
             response_json = await response.json()
             if response.status != 200:
+                print(response.status)
+                print(response_json)
                 match response.status:
                     case 400:
                         message = response_json["error"]["message"]
@@ -152,6 +155,10 @@ class OwletAPI:
                                 raise OwletEmailError("Invalid email")
                             case "EMAIL_NOT_FOUND":
                                 raise OwletEmailError("Email address not found")
+                            case "INVALID_LOGIN_CREDENTIALS":
+                                raise OwletCredentialsError(
+                                    "Invalid login credentials"
+                                )
                             case "TOO_MANY_ATTEMPTS_TRY_LATER":
                                 raise OwletAuthenticationError(
                                     "Too many incorrect attempts"

@@ -17,6 +17,9 @@ class OwletPasswordError(OwletError):
 class OwletEmailError(OwletError):
     """When email is incorrect"""
 
+class OwletCredentialsError(OwletError):
+    """When login creds are, no descript, api no longer returns if this is username or password that is incorrect"""
+
 
 class OwletDevicesError(OwletError):
     """when no devices are found"""
