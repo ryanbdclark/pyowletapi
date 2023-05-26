@@ -143,8 +143,6 @@ class OwletAPI:
         ) as response:
             response_json = await response.json()
             if response.status != 200:
-                print(response.status)
-                print(response_json)
                 match response.status:
                     case 400:
                         message = response_json["error"]["message"]
