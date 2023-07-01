@@ -15,14 +15,16 @@ import json
 async def run():
     with open("login.json") as file:
         data = json.load(file)
-    username = data["username"]
+    username = data["region"]
+    password = data["password"]
     password = data["password"]
 
-    #username = "sample@gmail.com"
-    password = "sample"
+    #region = "world"
+    #username = "email@domain.com"
+    #password = "password"
 
     api = OwletAPI(
-        "europe",username, password)
+        region, username, password)
 
     try:
         await api.authenticate()
