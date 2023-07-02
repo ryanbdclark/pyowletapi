@@ -15,8 +15,8 @@ import json
 async def run():
     with open("login.json") as file:
         data = json.load(file)
-    username = data["region"]
-    password = data["password"]
+    region = data["region"]
+    username = data["username"]
     password = data["password"]
 
     #region = "world"
