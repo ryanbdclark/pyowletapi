@@ -46,7 +46,7 @@ REGION_INFO = {
     "world": {
         "url_mini": "https://ayla-sso.owletdata.com/mini/",
         "url_signin": "https://user-field-1a2039d9.aylanetworks.com/api/v1/token_sign_in",
-        "url_signin": "https://user-field-1a2039d9.aylanetworks.com/users/refresh_token.json",
+        "url_refresh": "https://user-field-1a2039d9.aylanetworks.com/users/refresh_token.json",
         "url_base": "https://ads-field-1a2039d9.aylanetworks.com/apiv1",
         "apiKey": "AIzaSyCsDZ8kWxQuLJAMVnmEhEkayH1TSxKXfGA",
         "app_id": "sso-prod-3g-id",
