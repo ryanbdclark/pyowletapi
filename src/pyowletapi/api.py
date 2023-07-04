@@ -105,10 +105,10 @@ class OwletAPI:
         self.headers = {}
         self.devices = {}
 
-        self._api_url = REGION_INFO[self._region]["url_base"]
-
         if self._region not in ["europe", "world"]:
             raise OwletAuthenticationError("Supplied region not valid")
+
+        self._api_url = REGION_INFO[self._region]["url_base"]
 
         if self.session is None:
             self.session = aiohttp.ClientSession()
@@ -284,7 +284,7 @@ class OwletAPI:
 
                 if response.status != 200:
                     match response.status:
-                        case 401:
+                        case 400:
                             raise OwletAuthenticationError("Refresh token not valid")
                         case _:
                             raise OwletError("Generic refresh error, contact dev")
@@ -309,7 +309,7 @@ class OwletAPI:
         """
         if self._auth_token is None and self._refresh is None:
             if self._user is None or self._password is None:
-                return OwletAuthenticationError("Username or password not supplied")
+                raise OwletAuthenticationError("Username or password not supplied")
 
             await self.password_verification()
 
