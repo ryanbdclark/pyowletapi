@@ -8,15 +8,15 @@ long_description = (here / "README.md").read_text(encoding="utf-8")
 
 setup(
     name="pyowletapi",
-    version="2023.7.1",
+    version="2023.7.2",
     description="Owlet baby montior API wrapper",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/RyanClark123/pyowletapi",
+    url="https://github.com/ryanbdclark/pyowletapi",
     author="Ryan Clark",
     classifiers=[
         "License :: OSI Approved :: MIT License",
-        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
     ],
     keywords="owlet, api, baby",
     package_dir={"": "src"},

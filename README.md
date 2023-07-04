@@ -48,4 +48,4 @@ to get current reading from sock call the update_properties function on each soc
 ```python
 device.update_properties()
 ```
-This will return a tuple, the first element being the raw response as a dict and the second element is a more cut down dict version of the response showing only the most relevant data.
+This will return a dictionary, the key 'raw_properties' contains the raw response as a dict and the 'properties' key is a more cut down dict version of the response showing only the most relevant data and the 'tokens' key will return a dictionary if the api tokens have changed since the last call

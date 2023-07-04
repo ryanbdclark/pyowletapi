@@ -19,10 +19,6 @@ async def run():
     username = data["username"]
     password = data["password"]
 
-    #region = "world"
-    #username = "email@domain.com"
-    #password = "password"
-
     api = OwletAPI(
         region, username, password)
 
@@ -30,28 +26,21 @@ async def run():
         await api.authenticate()
 
         devices = await api.get_devices()
-        print(devices)
+        #print(devices)
         socks = {
             device["device"]["dsn"]: Sock(api, device["device"]) for device in devices['response']
         }
-
-        # for sock in socks.values():
-        # print(sock._api.tokens)
-        # for i in range(10):
         for sock in socks.values():
             properties = await sock.update_properties()
-            # properties = properties[1]
-            #print(properties)
-            # print(sock._api.tokens_changed)
-            # print(sock._api.tokens)
+            properties = properties["properties"]
+            print(properties)
 
-            # print(properties['heart_rate'], properties['oxygen_saturation'], properties['battery_percentage'])
+            print(properties['heart_rate'], properties['oxygen_saturation'], properties['battery_percentage'])
     except (OwletEmailError, OwletPasswordError, OwletError) as err:
         print(err)
         await api.close()
         exit()
 
-    await asyncio.sleep(60)
     await api.close()
 
 

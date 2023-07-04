@@ -14,15 +14,6 @@ PROPERTIES = {
 }
 
 VITALS = {
-    # Additional attributes not implemented
-    # Current alerts mask - "alrt" int
-    # Firmware update status - "ota" int
-    # Sock readings flag - "srf" int
-    # Soft brick status - "sb" int
-    # Wellness alert - "onm" int
-    # Hardware version - "hw" String
-    # Monitoring start time - "mst" int
-    # Base station battery status - "bsb" int
     float: {
         "oxygen_saturation": "ox",
         "heart_rate": "hr",
@@ -32,21 +23,26 @@ VITALS = {
         "oxygen_10_av": "oxta",
     },
     bool: {
-        "moving": "mv",
-        "alert_paused_status": "aps",
-        "charging": "chg",
         "base_station_on": "bso",
     },
     int: {
-        "sock_connection": "sc", 
-        "skin_temperature": "st", 
-        "sleep_state": "ss", 
-        "movement": "mv", 
-        "movement_bucket": "mvb"
+        "sock_connection": "sc",
+        "skin_temperature": "st",
+        "sleep_state": "ss",
+        "movement": "mv",
+        "movement_bucket": "mvb",
+        "alert_paused_status": "aps",
+        "charging": "chg",
+        "alerts_mask": "alrt",
+        "update_status": "ota",
+        "readings_flag": "srf",
+        "brick_status": "sb",
+        "wellness_alert": "onm",
+        "monitoring_start_time": "mst",
+        "base_battery_status": "bsb",
     },
-    "other": {
-        "last_updated": "data_updated_at"
-    },
+    str: {"hardware_version": "hw"},
+    "other": {"last_updated": "data_updated_at"},
 }
 
 REGION_INFO = {

@@ -14,6 +14,7 @@ class PropertiesDict(TypedDict):
     properties: dict
     tokens: Union[None, TokenDict]
 
+
 class Sock:
     """
     Class representing a Owlet sock device
@@ -179,20 +180,22 @@ class Sock:
         if self._version == 3:
             vitals = json.loads(self._raw_properties["REAL_TIME_VITALS"]["value"])
 
-            for type, vitals_tmp in VITALS.items():
-                for key, property in vitals_tmp.items():
-                    match key:
+            for type, vitals_list in VITALS.items():
+                for vital_desc, vital_key in vitals_list.items():
+                    match vital_desc:
                         case "base_station_on":
-                            properties[key] = bool(vitals["bso"]) or bool(vitals["chg"])
+                            properties[vital_desc] = bool(vitals["bso"]) or bool(
+                                vitals["chg"]
+                            )
                         case "last_updated":
-                            properties[key] = datetime.datetime.strptime(
+                            properties[vital_desc] = datetime.datetime.strptime(
                                 self._raw_properties["REAL_TIME_VITALS"][
                                     "data_updated_at"
                                 ],
                                 "%Y-%m-%dT%H:%M:%SZ",
                             ).strftime("%Y/%m/%d %H:%M:%S")
                         case _:
-                            properties[key] = type(vitals[property])
+                            properties[vital_desc] = type(vitals[vital_key])
 
         return properties
 
