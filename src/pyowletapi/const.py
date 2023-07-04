@@ -19,7 +19,6 @@ VITALS = {
     # Firmware update status - "ota" int
     # Sock readings flag - "srf" int
     # Soft brick status - "sb" int
-    # Movement bucket - "mvb" int
     # Wellness alert - "onm" int
     # Hardware version - "hw" String
     # Monitoring start time - "mst" int
@@ -38,8 +37,16 @@ VITALS = {
         "charging": "chg",
         "base_station_on": "bso",
     },
-    int: {"sock_connection": "sc", "skin_temperature": "st", "sleep_state": "ss"},
-    "other": {"last_updated": "data_updated_at"},
+    int: {
+        "sock_connection": "sc", 
+        "skin_temperature": "st", 
+        "sleep_state": "ss", 
+        "movement": "mv", 
+        "movement_bucket": "mvb"
+    },
+    "other": {
+        "last_updated": "data_updated_at"
+    },
 }
 
 REGION_INFO = {
