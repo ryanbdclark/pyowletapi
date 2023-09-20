@@ -3,7 +3,7 @@ from logging import Logger
 import json
 import datetime
 from .api import OwletAPI, TokenDict
-from .const import PROPERTIES, VITALS
+from .const import PROPERTIES, VITALS_ALL, VITALS_OLD
 from typing import Union, TypedDict
 
 logger: Logger = logging.getLogger(__package__)
@@ -83,6 +83,7 @@ class Sock:
         self._device_type = data["device_type"]
         self._manuf_model = data["manuf_model"]
         self._version = None
+        self._revision = None
 
         self._raw_properties = {}
         self._properties = {}
@@ -143,6 +144,10 @@ class Sock:
     def raw_properties(self) -> dict:
         return self._raw_properties
 
+    @property
+    def revision(self) -> int:
+        return self._revision
+
     def get_property(self, property: str) -> str:
         """
         Returns the specific property based on the property argument passed in
@@ -180,7 +185,7 @@ class Sock:
         if self._version == 3:
             vitals = json.loads(self._raw_properties["REAL_TIME_VITALS"]["value"])
 
-            for type, vitals_list in VITALS.items():
+            for type, vitals_list in VITALS_ALL.items():
                 for vital_desc, vital_key in vitals_list.items():
                     match vital_desc:
                         case "base_station_on":
@@ -196,6 +201,10 @@ class Sock:
                             ).strftime("%Y/%m/%d %H:%M:%S")
                         case _:
                             properties[vital_desc] = type(vitals[vital_key])
+            if self._revision < 5:
+                for type, vitals_list in VITALS_OLD.items():
+                    for vital_desc, vital_key in vitals_list.items():                        
+                            properties[vital_desc] = type(vitals[vital_key])
 
         return properties
 
@@ -206,6 +215,10 @@ class Sock:
         elif "CHARGE_STATUS" in self._raw_properties:
             version = 2
         self._version = version
+
+    async def _check_revision(self) -> None:
+        revision_json = json.loads(self._raw_properties["oem_sock_version"]["value"])
+        self._revision = revision_json["rev"]
 
     async def update_properties(
         self,
@@ -224,6 +237,8 @@ class Sock:
         self._raw_properties = properties["response"]
         if self._version is None:
             await self._check_version()
+        if self._revision is None:
+            await self._check_revision()
         self._properties = await self.normalise_properties()
 
         return {

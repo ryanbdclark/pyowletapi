@@ -31,11 +31,13 @@ async def run():
             device["device"]["dsn"]: Sock(api, device["device"]) for device in devices['response']
         }
         for sock in socks.values():
+            #print(await sock._api.get_properties(sock.serial))
             properties = await sock.update_properties()
+            print(sock.revision)
             properties = properties["properties"]
             print(properties)
 
-            print(properties['heart_rate'], properties['oxygen_saturation'], properties['battery_percentage'])
+            # print(properties['heart_rate'], properties['oxygen_saturation'], properties['battery_percentage'])
     except (OwletEmailError, OwletPasswordError, OwletError) as err:
         print(err)
         await api.close()

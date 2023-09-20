@@ -13,14 +13,13 @@ PROPERTIES = {
     }
 }
 
-VITALS = {
+VITALS_ALL = {
     float: {
         "oxygen_saturation": "ox",
         "heart_rate": "hr",
         "battery_percentage": "bat",
         "battery_minutes": "btt",
         "signal_strength": "rsi",
-        "oxygen_10_av": "oxta",
     },
     bool: {
         "base_station_on": "bso",
@@ -30,19 +29,27 @@ VITALS = {
         "skin_temperature": "st",
         "sleep_state": "ss",
         "movement": "mv",
-        "movement_bucket": "mvb",
         "alert_paused_status": "aps",
         "charging": "chg",
         "alerts_mask": "alrt",
         "update_status": "ota",
         "readings_flag": "srf",
         "brick_status": "sb",
+    },
+    "other": {"last_updated": "data_updated_at"},
+}
+
+VITALS_OLD = {
+    float: {
+        "oxygen_10_av": "oxta",
+    },
+    int: {
+        "movement_bucket": "mvb",
         "wellness_alert": "onm",
         "monitoring_start_time": "mst",
         "base_battery_status": "bsb",
     },
     str: {"hardware_version": "hw"},
-    "other": {"last_updated": "data_updated_at"},
 }
 
 REGION_INFO = {
