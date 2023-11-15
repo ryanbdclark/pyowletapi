@@ -3,7 +3,7 @@ from logging import Logger
 import json
 import datetime
 from .api import OwletAPI, TokenDict
-from .const import PROPERTIES, VITALS_ALL, VITALS_OLD
+from .const import PROPERTIES, VITALS
 from typing import Union, TypedDict
 
 logger: Logger = logging.getLogger(__package__)
@@ -177,34 +177,43 @@ class Sock:
         properties = {}
 
         for type, properties_tmp in PROPERTIES.items():
-            properties = {
-                key: type(self._raw_properties[property]["value"])
-                for key, property in properties_tmp.items()
-            }
+            try:
+                for key, property in properties_tmp.items():
+                    properties[key] = type(self._raw_properties[property]["value"])
+            except KeyError:
+                pass
 
         if self._version == 3:
             vitals = json.loads(self._raw_properties["REAL_TIME_VITALS"]["value"])
 
-            for type, vitals_list in VITALS_ALL.items():
+            for type, vitals_list in VITALS.items():
                 for vital_desc, vital_key in vitals_list.items():
                     match vital_desc:
                         case "base_station_on":
-                            properties[vital_desc] = bool(vitals["bso"]) or bool(
-                                vitals["chg"]
-                            )
+                            try:
+                                properties[vital_desc] = bool(vitals["bso"]) or bool(
+                                    vitals["chg"]
+                                )
+                            except KeyError:
+                                if "bso" in vitals:
+                                    properties[vital_desc] = bool(vitals["bso"])
+                                else:
+                                    pass
                         case "last_updated":
-                            properties[vital_desc] = datetime.datetime.strptime(
-                                self._raw_properties["REAL_TIME_VITALS"][
-                                    "data_updated_at"
-                                ],
-                                "%Y-%m-%dT%H:%M:%SZ",
-                            ).strftime("%Y/%m/%d %H:%M:%S")
+                            try:
+                                properties[vital_desc] = datetime.datetime.strptime(
+                                    self._raw_properties["REAL_TIME_VITALS"][
+                                        "data_updated_at"
+                                    ],
+                                    "%Y-%m-%dT%H:%M:%SZ",
+                                ).strftime("%Y/%m/%d %H:%M:%S")
+                            except KeyError:
+                                pass
                         case _:
-                            properties[vital_desc] = type(vitals[vital_key])
-            if self._revision < 5:
-                for type, vitals_list in VITALS_OLD.items():
-                    for vital_desc, vital_key in vitals_list.items():                        
-                            properties[vital_desc] = type(vitals[vital_key])
+                            try:
+                                properties[vital_desc] = type(vitals[vital_key])
+                            except KeyError:
+                                pass
 
         return properties
 
