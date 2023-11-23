@@ -254,7 +254,7 @@ class Sock:
         self._raw_properties = properties["response"]
         if self._version is None:
             await self._check_version()
-        if self._revision is None:
+        if self._revision is None and self._version == 3:
             await self._check_revision()
         self._properties = await self.normalise_properties()
 
