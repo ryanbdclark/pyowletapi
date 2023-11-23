@@ -3,7 +3,7 @@ from logging import Logger
 import json
 import datetime
 from .api import OwletAPI, TokenDict
-from .const import PROPERTIES, VITALS
+from .const import PROPERTIES, VITALS_3, VITALS_2
 from typing import Union, TypedDict
 
 logger: Logger = logging.getLogger(__package__)
@@ -186,7 +186,7 @@ class Sock:
         if self._version == 3:
             vitals = json.loads(self._raw_properties["REAL_TIME_VITALS"]["value"])
 
-            for type, vitals_list in VITALS.items():
+            for type, vitals_list in VITALS_3.items():
                 for vital_desc, vital_key in vitals_list.items():
                     match vital_desc:
                         case "base_station_on":
@@ -214,6 +214,14 @@ class Sock:
                                 properties[vital_desc] = type(vitals[vital_key])
                             except KeyError:
                                 pass
+
+        if self._version == 2:
+            for type, vitals_list in VITALS_2.items():
+                for vital_desc, vital_key in vitals_list.items():
+                    try:
+                        properties[vital_desc] = type(self._raw_properties[vital_key]["value"])
+                    except KeyError:
+                        pass
 
         return properties
 

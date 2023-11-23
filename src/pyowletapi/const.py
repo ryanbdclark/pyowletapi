@@ -10,10 +10,13 @@ PROPERTIES = {
         "lost_power_alert": "LOST_POWER_ALRT",
         "sock_disconnected": "SOCK_DISCON_ALRT",
         "sock_off": "SOCK_OFF",
+        "critical_battery_alert": "CRIT_BATT_ALRT",
+        "critical_oxygen_alert": "CRIT_OX_ALRT",
+
     }
 }
 
-VITALS = {
+VITALS_3 = {
     float: {
         "oxygen_saturation": "ox",
         "heart_rate": "hr",
@@ -45,6 +48,27 @@ VITALS = {
         "hardware_version": "hw",
     },
     "other": {"last_updated": "data_updated_at"},
+}
+
+VITALS_2 = {
+    float: {
+        "signal_strength": "BLE_RSSI",
+    },
+    bool: {
+        "base_station_on": "BASE_STATION_ON",
+        "sock_connection": "SOCK_CONNECTION",
+    },
+    int: {
+        "oxygen_saturation": "OXYGEN_LEVEL",
+        "heart_rate": "HEART_RATE",
+        "battery_percentage": "BATT_LEVEL",
+        "movement": "MOVEMENT",
+        "charging": "CHARGE_STATUS",
+        "update_status": "OTA_STATUS",
+    },
+    str: {
+        "hardware_version": "oem_sock_version",
+    },
 }
 
 REGION_INFO = {

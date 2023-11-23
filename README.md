@@ -1,15 +1,11 @@
 # Introduction
 
-First pass at creating a wrapper for the Owlet baby monitor api, this currently only supports the sock v3 as I do not have a v2 to test with
-
-inspiration and API reverse engineering taken from various projects:
+Inspiration and API reverse engineering taken from various projects:
 
 https://github.com/BastianPoe/owlet_api
 
 https://github.com/mbevand/owlet_monitor
 
-
-End goal is to create a homeassistant integration using this API. But the intention is that this library will always be usable standalone
 
 ## Install
 To install via pip run command 
