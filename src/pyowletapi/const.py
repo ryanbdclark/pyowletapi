@@ -12,7 +12,6 @@ PROPERTIES = {
         "sock_off": "SOCK_OFF",
         "critical_battery_alert": "CRIT_BATT_ALRT",
         "critical_oxygen_alert": "CRIT_OX_ALRT",
-
     }
 }
 

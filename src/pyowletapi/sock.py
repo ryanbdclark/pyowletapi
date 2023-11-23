@@ -177,11 +177,11 @@ class Sock:
         properties = {}
 
         for type, properties_tmp in PROPERTIES.items():
-            try:
-                for key, property in properties_tmp.items():
+            for key, property in properties_tmp.items():
+                try:
                     properties[key] = type(self._raw_properties[property]["value"])
-            except KeyError:
-                pass
+                except KeyError:
+                    pass
 
         if self._version == 3:
             vitals = json.loads(self._raw_properties["REAL_TIME_VITALS"]["value"])
@@ -219,7 +219,9 @@ class Sock:
             for type, vitals_list in VITALS_2.items():
                 for vital_desc, vital_key in vitals_list.items():
                     try:
-                        properties[vital_desc] = type(self._raw_properties[vital_key]["value"])
+                        properties[vital_desc] = type(
+                            self._raw_properties[vital_key]["value"]
+                        )
                     except KeyError:
                         pass
 
