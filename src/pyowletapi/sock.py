@@ -72,16 +72,16 @@ class Sock:
         data (dict):Data returned from the Owlet API showing the details of the sock
         """
         self._api = api
-        self._name = data["product_name"]
-        self._model = data["model"]
-        self._serial = data["dsn"]
-        self._oem_model = data["oem_model"]
-        self._sw_version = data["sw_version"]
-        self._mac = data["mac"]
-        self._lan_ip = data["lan_ip"]
-        self._connection_status = data["connection_status"]
-        self._device_type = data["device_type"]
-        self._manuf_model = data["manuf_model"]
+        self._name = data.get("product_name","Owlet Baby Monitors")
+        self._model = data.get("model","")
+        self._serial = data.get("dsn","Unkown")
+        self._oem_model = data.get("oem_model","Unknown")
+        self._sw_version = data.get("sw_version","Unknown")
+        self._mac = data.get("mac","")
+        self._lan_ip = data.get("lan_ip","")
+        self._connection_status = data.get("connection_status","Unknown")
+        self._device_type = data.get("device_type","Wifi")
+        self._manuf_model = data.get("manuf_model","Unknown")
         self._version = None
         self._revision = None
 
@@ -191,14 +191,9 @@ class Sock:
                     match vital_desc:
                         case "base_station_on":
                             try:
-                                properties[vital_desc] = bool(vitals["bso"]) or bool(
-                                    vitals["chg"]
-                                )
+                                properties[vital_desc] = vitals["bso"]
                             except KeyError:
-                                if "bso" in vitals:
-                                    properties[vital_desc] = bool(vitals["bso"])
-                                else:
-                                    pass
+                                pass
                         case "last_updated":
                             try:
                                 properties[vital_desc] = datetime.datetime.strptime(
