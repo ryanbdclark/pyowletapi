@@ -246,7 +246,7 @@ class Sock:
         (dict):Dictionary containing three dictionaries, one with the raw json response from the API and another with the stripped down
         properties from normalise_properties, the third will contain the new api tokens if they have changed, if they haven't changed this will be None
         """
-        logging.info(f"Updating properties for device {self.serial}")
+        logger.info(f"Updating properties for device {self.serial}")
         properties = await self._api.get_properties(self.serial)
         self._raw_properties = properties["response"]
         if self._version is None:
