@@ -101,7 +101,7 @@ class OwletAPI:
         self._refresh: str = refresh
         self._tokens_changed: bool = False
         self._has_authenticated: bool = False
-        self.session = session
+        self.session = session or aiohttp.ClientSession()
         self.headers = {}
         self.devices = {}
 
@@ -109,9 +109,6 @@ class OwletAPI:
             raise OwletAuthenticationError("Supplied region not valid")
 
         self._api_url = REGION_INFO[self._region]["url_base"]
-
-        if self.session is None:
-            self.session = aiohttp.ClientSession()
 
     @property
     def tokens(self) -> TokenDict:
@@ -421,6 +418,14 @@ class OwletAPI:
         for property in response:
             properties[property["property"]["name"]] = property["property"]
         return {"response": properties, "tokens": await self.check_tokens(temp_tokens)}
+    
+    async def post_command(self, device, command, data):
+
+        await self.activate(device)
+        response = await self.request("POST", f'/dsns/{device}/properties/{command}/datapoints.json', data)
+
+        return response
+
 
     async def request(self, method: str, url: str, data: dict = None) -> dict:
         """
@@ -430,7 +435,7 @@ class OwletAPI:
         ---------
         method (str):The method to call, either 'GET' or 'POST'
         url (str):The API url to call against
-        data (dict):A dictionary with the data to send to the API, only used when the activate method is called
+        data (dict):A dictionary with the data to send to the API.
 
         Returns
         ------

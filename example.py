@@ -37,6 +37,7 @@ async def run():
             properties = properties["properties"]
             print(properties)
 
+            print(await sock.control_base_station(True))
             # print(properties['heart_rate'], properties['oxygen_saturation'], properties['battery_percentage'])
     except (OwletEmailError, OwletPasswordError, OwletError) as err:
         print(err)

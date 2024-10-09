@@ -2,6 +2,7 @@ import logging
 from logging import Logger
 import json
 import datetime
+import time
 from .api import OwletAPI, TokenDict
 from .const import PROPERTIES, VITALS_3, VITALS_2
 from typing import Union, TypedDict
@@ -72,16 +73,16 @@ class Sock:
         data (dict):Data returned from the Owlet API showing the details of the sock
         """
         self._api = api
-        self._name = data.get("product_name","Owlet Baby Monitors")
-        self._model = data.get("model","")
-        self._serial = data.get("dsn","Unkown")
-        self._oem_model = data.get("oem_model","Unknown")
-        self._sw_version = data.get("sw_version","Unknown")
-        self._mac = data.get("mac","")
-        self._lan_ip = data.get("lan_ip","")
-        self._connection_status = data.get("connection_status","Unknown")
-        self._device_type = data.get("device_type","Wifi")
-        self._manuf_model = data.get("manuf_model","Unknown")
+        self._name = data.get("product_name", "Owlet Baby Monitors")
+        self._model = data.get("model", "")
+        self._serial = data.get("dsn", "Unkown")
+        self._oem_model = data.get("oem_model", "Unknown")
+        self._sw_version = data.get("sw_version", "Unknown")
+        self._mac = data.get("mac", "")
+        self._lan_ip = data.get("lan_ip", "")
+        self._connection_status = data.get("connection_status", "Unknown")
+        self._device_type = data.get("device_type", "Wifi")
+        self._manuf_model = data.get("manuf_model", "Unknown")
         self._version = None
         self._revision = None
 
@@ -260,3 +261,22 @@ class Sock:
             "properties": self._properties,
             "tokens": properties["tokens"],
         }
+
+    async def control_base_station(self, on: bool) -> bool:
+        """
+        Calls the Owlet api to turn the base station on or off, returns a bool if this was successful
+
+        Returns
+        -------
+        (bool):Was the command successful
+        """
+
+        logging.info(f"Amend base station status {self.serial}")
+        value = json.dumps({"ts": int(time.time()), "val": "true" if on else "false"})
+        data = {"datapoint": {"metadata": {}, "value": value}}
+
+        response = await self._api.post_command(
+            self.serial, "BASE_STATION_ON_CMD", data
+        )
+
+        return True if response else False
