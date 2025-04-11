@@ -153,3 +153,5 @@ cython_debug/
 
 
 login.json
+path.txt
+src/pyowletapi/camera.py

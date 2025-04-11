@@ -163,7 +163,7 @@ class Sock:
         """
         return self._properties[property]
 
-    async def normalise_properties(self) -> dict[str : Union[bool, str, float]]:
+    async def _normalise_properties(self) -> dict[str : Union[bool, str, float]]:
         """
         Takes the raw properties dictionary returned from the API and formats it into another dict that is more stripped down and easier to work with
 
@@ -254,13 +254,17 @@ class Sock:
             await self._check_version()
         if self._revision is None and self._version == 3:
             await self._check_revision()
-        self._properties = await self.normalise_properties()
+        self._properties = await self._normalise_properties()
 
-        return {
+        response = {
             "raw_properties": self._raw_properties,
             "properties": self._properties,
-            "tokens": properties["tokens"],
         }
+
+        if "tokens" in properties:
+            response["tokens"] = properties["tokens"]
+
+        return response
 
     async def control_base_station(self, on: bool) -> bool:
         """

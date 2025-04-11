@@ -38,7 +38,7 @@ class OwletAPI:
     password : str
         password of user logging in
     auth_token : str
-        once autherntiacted the auth token will be stored in the object to be used for future api calls
+        once authentiacted the auth token will be stored in the object to be used for future api calls
     expiry : str
         the expiry date of the connection is stored such that if the connection is expired the object reauthenticates
     session : aiohttp.ClientSession
@@ -105,6 +105,9 @@ class OwletAPI:
         self.headers = {}
         self.devices = {}
 
+        if self._auth_token:
+            self.headers["Authorization"] = "auth_token " + self._auth_token
+
         if self._region not in ["europe", "world"]:
             raise OwletAuthenticationError("Supplied region not valid")
 
@@ -122,7 +125,7 @@ class OwletAPI:
     async def password_verification(self) -> None:
         """
         Will attempt to use the users username and password to login to the identitytoolkit api if authentication fails
-        for any reason the relevent error is thrown, otherwise the returned refresh token will be stored
+        for any reason the relevant error is thrown, otherwise the returned refresh token will be stored
         """
         api_key = REGION_INFO[self._region]["apiKey"]
         async with self.session.request(
@@ -151,9 +154,7 @@ class OwletAPI:
                             case "EMAIL_NOT_FOUND":
                                 raise OwletEmailError("Email address not found")
                             case "INVALID_LOGIN_CREDENTIALS":
-                                raise OwletCredentialsError(
-                                    "Invalid login credentials"
-                                )
+                                raise OwletCredentialsError("Invalid login credentials")
                             case "TOO_MANY_ATTEMPTS_TRY_LATER":
                                 raise OwletAuthenticationError(
                                     "Too many incorrect attempts"
@@ -169,7 +170,7 @@ class OwletAPI:
                                 )
                             case _:
                                 raise OwletAuthenticationError(
-                                    "Generic indentitytoolkit error, contact dev"
+                                    "Generic identitytoolkit error, contact dev"
                                 )
                     case 403:
                         # Should never happen, report anyway
@@ -183,7 +184,13 @@ class OwletAPI:
                         raise OwletAuthenticationError(
                             f"Generic error contact dev, {response.status}, {response.text}"
                         )
-            self._refresh = response_json["refreshToken"]
+                    
+            self._update_tokens(
+                new_token=self._auth_token,
+                new_expiry=self._expiry,
+                new_refresh=response_json["refreshToken"],
+            )
+
 
     async def get_mini_token(self, id_token) -> str:
         """
@@ -244,22 +251,22 @@ class OwletAPI:
                         raise OwletAuthenticationError(
                             "Generic ayla endpoint error, contact dev"
                         )
-            self._auth_token = response_json["access_token"]
-            self._expiry = time.time() - 60 + response_json["expires_in"]
 
-            self.headers["Authorization"] = "auth_token " + self._auth_token
+            self._update_tokens(
+                new_token=response_json["access_token"],
+                new_expiry=time.time() - 60 + response_json["expires_in"],
+                new_refresh=self._refresh,
+            )
 
-            return {
-                "api_token": self._auth_token,
-                "expiry": self._expiry,
-                "refresh": self._refresh,
-            }
-
+            if self._tokens_changed:
+                self._tokens_changed = False
+                return self.tokens
+            
     async def refresh_authentication(
         self,
     ) -> TokenDict:
         """
-        Will attempt to refresh authentication when expired, if no refresh token exists or authentication fails then the relevent
+        Will attempt to refresh authentication when expired, if no refresh token exists or authentication fails then the relevant
         error will be thrown. On succesful authentication a TokenDict will be returned
 
         Returns
@@ -286,7 +293,11 @@ class OwletAPI:
                         case _:
                             raise OwletError("Generic refresh error, contact dev")
 
-                self._refresh = response_json["refresh_token"]
+                self._update_tokens(
+                    new_token=self._auth_token,
+                    new_expiry=self._expiry,
+                    new_refresh=response_json["refresh_token"],
+                )
 
                 mini_token = await self.get_mini_token(response_json["id_token"])
 
@@ -310,10 +321,12 @@ class OwletAPI:
 
             await self.password_verification()
 
-        if self._auth_token is None or self._expiry <= time.time():
+        if (
+            self._auth_token is None
+            or self._expiry == None
+            or self._expiry <= time.time()
+        ):
             return await self.refresh_authentication()
-
-        self.headers["Authorization"] = "auth_token " + self._auth_token
 
         return await self.validate_authentication()
 
@@ -336,13 +349,27 @@ class OwletAPI:
         if self.session:
             await self.session.close()
 
-    async def check_tokens(self, temp_tokens) -> Union[None, TokenDict]:
-        """
-        Checks if supplied tokens are different to the current tokens, if they are then return the current tokens as a TokenDict
-        otherwise return None
-        """
-        if temp_tokens != self.tokens:
-            return self.tokens
+    def _update_tokens(self, new_token: str, new_expiry: float, new_refresh: str):
+        if (
+            self._auth_token != new_token
+            or self._expiry != new_expiry
+            or self._refresh != new_refresh
+        ):
+            self._auth_token = new_token
+            if self._auth_token:
+                self.headers["Authorization"] = "auth_token " + self._auth_token
+            self._expiry = new_expiry
+            self._refresh = new_refresh
+            self._tokens_changed = True
+
+    async def _is_valid_version(self, dsn: str, versions: list[int]) -> bool:
+        properties = await self.get_properties(dsn)
+        properties = properties["response"]
+        if "REAL_TIME_VITALS" in properties:
+            return 3 in versions
+        if "CHARGE_STATUS" in properties:
+            return 2 in versions
+        return False
 
     async def get_devices(self, versions: list[int] = None) -> dict:
         """
@@ -356,30 +383,27 @@ class OwletAPI:
         ------
         dict: Dictionary containing the json response
         """
-
-        temp_tokens = self.tokens
-
+        versions = versions or [3,2]
         devices = await self.request("GET", ("/devices.json"))
-        if versions:
-            for idx, device in enumerate(devices):
-                properties = await self.get_properties(device["device"]["dsn"])
-                properties = properties["response"]
-                version = 0
-                if "REAL_TIME_VITALS" in properties:
-                    version = 3
-                elif "CHARGE_STATUS" in properties:
-                    version = 2
-                if version not in versions or version == 0:
-                    devices.pop(idx)
+        devices = [
+            d
+            for d in devices
+            if await self._is_valid_version(d["device"]["dsn"], versions)
+        ]
 
         if len(devices) < 1:
             raise OwletDevicesError("No devices found")
 
-        return {"response": devices, "tokens": await self.check_tokens(temp_tokens)}
+        response = {"response": devices}
+        if self._tokens_changed:
+            response["tokens"] = self.tokens
+            self._tokens_changed = False
+
+        return response
 
     async def activate(self, device_serial: str) -> None:
         """
-        Owlet API requires the APP_ACITVE be set to 1 to return properties, this sets that
+        Owlet API requires the APP_ACTIVE be set to 1 to return properties, this sets that
 
         Parameters
         ---------
@@ -409,23 +433,27 @@ class OwletAPI:
         ------
         (dict):A dictionary containing all the current properties for the request device
         """
-        temp_tokens = self.tokens
-
         properties = {}
         await self.activate(device)
         response = await self.request("GET", f"/dsns/{device}/properties.json")
 
         for property in response:
             properties[property["property"]["name"]] = property["property"]
-        return {"response": properties, "tokens": await self.check_tokens(temp_tokens)}
-    
-    async def post_command(self, device, command, data):
 
-        await self.activate(device)
-        response = await self.request("POST", f'/dsns/{device}/properties/{command}/datapoints.json', data)
+        response = {"response": properties}
 
+        if self._tokens_changed:
+            response["tokens"] = self.tokens
         return response
 
+    async def post_command(self, device: str, command: str, data: dict) -> dict:
+
+        await self.activate(device)
+        response = await self.request(
+            "POST", f"/dsns/{device}/properties/{command}/datapoints.json", data
+        )
+
+        return response
 
     async def request(self, method: str, url: str, data: dict = None) -> dict:
         """
