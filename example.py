@@ -34,7 +34,7 @@ async def run():
             #print(await sock._api.get_properties(sock.serial))
             properties = await sock.update_properties()
             print(sock.revision)
-            properties = properties["properties"]
+            properties = properties["raw_properties"]
             print(properties)
 
             print(await sock.control_base_station(True))
