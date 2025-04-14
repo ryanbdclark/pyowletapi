@@ -26,7 +26,6 @@ async def run():
         await api.authenticate()
 
         devices = await api.get_devices()
-        #print(devices)
         socks = {
             device["device"]["dsn"]: Sock(api, device["device"]) for device in devices['response']
         }

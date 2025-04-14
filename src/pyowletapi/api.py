@@ -3,6 +3,7 @@ import time
 import logging
 from logging import Logger
 from aiohttp.client_exceptions import ClientResponseError
+import asyncio
 from typing import Union, TypedDict
 
 from .exceptions import (
@@ -383,18 +384,21 @@ class OwletAPI:
         ------
         dict: Dictionary containing the json response
         """
-        versions = versions or [3,2]
-        devices = await self.request("GET", ("/devices.json"))
-        devices = [
-            d
-            for d in devices
-            if await self._is_valid_version(d["device"]["dsn"], versions)
-        ]
+        versions = versions or [3, 2]
+        devices = await self.request("GET", "/devices.json")
 
-        if len(devices) < 1:
+        checks = [
+            self._is_valid_version(d["device"]["dsn"], versions)
+            for d in devices
+        ]
+        results = await asyncio.gather(*checks)
+
+        valid_devices = [d for d, valid in zip(devices, results) if valid]
+
+        if not valid_devices:
             raise OwletDevicesError("No devices found")
 
-        response = {"response": devices}
+        response = {"response": valid_devices}
         if self._tokens_changed:
             response["tokens"] = self.tokens
             self._tokens_changed = False
