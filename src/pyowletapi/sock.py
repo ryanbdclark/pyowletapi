@@ -3,7 +3,7 @@ from logging import Logger
 import json
 import datetime
 import time
-from .api import OwletAPI, TokenDict
+from .api import OwletAPI, TokenDict, SockData
 from .const import PROPERTIES, VITALS_3, VITALS_2
 from typing import Union, TypedDict, NotRequired, Any, Optional
 
@@ -14,19 +14,6 @@ class PropertiesDict(TypedDict):
     raw_properties: dict[str, dict[str, Any]]
     properties: dict[str, Union[bool, str, float]]
     tokens: NotRequired[TokenDict]
-
-
-class SockData(TypedDict):
-    product_name: str
-    model: str
-    dsn: str
-    oem_model: str
-    sw_version: str
-    mac: str
-    lan_ip: str
-    connection_status: str
-    device_type: str
-    manuf_model: str
 
 
 class Sock:

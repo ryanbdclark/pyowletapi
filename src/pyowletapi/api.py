@@ -17,6 +17,19 @@ from .const import REGION_INFO
 logger: Logger = logging.getLogger(__package__)
 
 
+class SockData(TypedDict):
+    product_name: str
+    model: str
+    dsn: str
+    oem_model: str
+    sw_version: str
+    mac: str
+    lan_ip: str
+    connection_status: str
+    device_type: str
+    manuf_model: str
+
+
 class TokenDict(TypedDict):
     api_token: Optional[str]
     expiry: Optional[float]
@@ -24,7 +37,7 @@ class TokenDict(TypedDict):
 
 
 class DevicesResponse(TypedDict):
-    response: list[dict[str, dict[str, Any]]]
+    response: list[dict[str, dict[str, SockData]]]
     tokens: NotRequired[TokenDict]
 
 
