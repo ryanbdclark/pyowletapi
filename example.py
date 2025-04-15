@@ -1,12 +1,6 @@
 from src.pyowletapi.api import OwletAPI
 from src.pyowletapi.sock import Sock
-from src.pyowletapi.exceptions import (
-    OwletAuthenticationError,
-    OwletConnectionError,
-    OwletError,
-    OwletPasswordError,
-    OwletEmailError,
-)
+from src.pyowletapi.exceptions import OwletError
 
 import asyncio
 import json
@@ -19,26 +13,25 @@ async def run():
     username = data["username"]
     password = data["password"]
 
-    api = OwletAPI(
-        region, username, password)
+    api = OwletAPI(region, username, password)
 
     try:
         await api.authenticate()
 
         devices = await api.get_devices()
+        print(devices)
         socks = {
-            device["device"]["dsn"]: Sock(api, device["device"]) for device in devices['response']
+            device["device"]["dsn"]: Sock(api, device["device"])
+            for device in devices["response"]
         }
         for sock in socks.values():
-            #print(await sock._api.get_properties(sock.serial))
+            # print(await sock._api.get_properties(sock.serial))
             properties = await sock.update_properties()
             print(sock.revision)
-            properties = properties["raw_properties"]
+            properties = properties["properties"]
             print(properties)
 
-            print(await sock.control_base_station(True))
-            # print(properties['heart_rate'], properties['oxygen_saturation'], properties['battery_percentage'])
-    except (OwletEmailError, OwletPasswordError, OwletError) as err:
+    except OwletError as err:
         print(err)
         await api.close()
         exit()

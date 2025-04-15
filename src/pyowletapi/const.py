@@ -1,4 +1,4 @@
-PROPERTIES = {
+PROPERTIES: dict[type, dict[str, str]] = {
     bool: {
         "high_oxygen_alert": "HIGH_OX_ALRT",
         "low_battery_alert": "LOW_BATT_ALRT",
@@ -12,10 +12,10 @@ PROPERTIES = {
         "sock_off": "SOCK_OFF",
         "critical_battery_alert": "CRIT_BATT_ALRT",
         "critical_oxygen_alert": "CRIT_OX_ALRT",
-    }
+    },
 }
 
-VITALS_3 = {
+VITALS_3: dict[type, dict[str, str]] = {
     float: {
         "oxygen_saturation": "ox",
         "heart_rate": "hr",
@@ -46,10 +46,13 @@ VITALS_3 = {
     str: {
         "hardware_version": "hw",
     },
-    "other": {"last_updated": "data_updated_at"},
 }
 
-VITALS_2 = {
+VITALS_3_OTHER: dict[str, str] = {
+    "last_updated": "data_updated_at",
+}
+
+VITALS_2: dict[type, dict[str, str]] = {
     float: {
         "signal_strength": "BLE_RSSI",
     },
@@ -70,7 +73,7 @@ VITALS_2 = {
     },
 }
 
-REGION_INFO = {
+REGION_INFO: dict[str, dict[str, str]] = {
     "world": {
         "url_mini": "https://ayla-sso.owletdata.com/mini/",
         "url_signin": "https://user-field-1a2039d9.aylanetworks.com/api/v1/token_sign_in",

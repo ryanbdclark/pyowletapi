@@ -8,8 +8,8 @@ long_description = (here / "README.md").read_text(encoding="utf-8")
 
 setup(
     name="pyowletapi",
-    version="2025.4.3",
-    description="Owlet baby montior API wrapper",
+    version="2025.4.4",
+    description="Owlet baby monitor API wrapper",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/ryanbdclark/pyowletapi",
