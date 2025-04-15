@@ -8,7 +8,7 @@ long_description = (here / "README.md").read_text(encoding="utf-8")
 
 setup(
     name="pyowletapi",
-    version="2025.4.5",
+    version="2025.4.6",
     description="Owlet baby monitor API wrapper",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -21,6 +21,8 @@ setup(
     keywords="owlet, api, baby",
     package_dir={"": "src"},
     packages=find_packages(where="src"),
+    include_package_data=True,
+    package_data={"pyowletapi": ["py.typed"]},
     python_requires=">=3.10",
     install_requires=["aiohttp"],
 )
