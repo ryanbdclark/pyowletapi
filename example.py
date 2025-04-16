@@ -27,6 +27,7 @@ async def run():
             # print(await sock._api.get_properties(sock.serial))
             properties = await sock.update_properties()
             properties = properties["properties"]
+            print(properties)
 
     except OwletError as err:
         print(err)

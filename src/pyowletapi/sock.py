@@ -4,7 +4,7 @@ import json
 import datetime
 import time
 from .api import OwletAPI, TokenDict, SockData
-from .const import PROPERTIES, VITALS_3, VITALS_2
+from .const import PROPERTIES, VITALS_3, VITALS_2, PropertyKey, Properties
 from typing import Union, TypedDict, NotRequired, Any, Optional
 
 logger: Logger = logging.getLogger(__package__)
@@ -12,7 +12,7 @@ logger: Logger = logging.getLogger(__package__)
 
 class PropertiesDict(TypedDict):
     raw_properties: dict[str, dict[str, Any]]
-    properties: dict[str, Union[bool, str, float]]
+    properties: Properties
     tokens: NotRequired[TokenDict]
 
 
@@ -89,7 +89,7 @@ class Sock:
         self._revision = None
 
         self._raw_properties: dict[str, dict[str, Any]] = {}
-        self._properties: dict[str, Union[bool, str, float]] = {}
+        self._properties: Properties = {}
 
     @property
     def api(self) -> OwletAPI:
@@ -140,7 +140,7 @@ class Sock:
         return self._manuf_model
 
     @property
-    def properties(self) -> dict[str, Union[bool, str, float]]:
+    def properties(self) -> Properties:
         return self._properties
 
     @property
@@ -151,7 +151,7 @@ class Sock:
     def revision(self) -> Optional[int]:
         return self._revision
 
-    def get_property(self, property: str) -> Union[bool, str, float]:
+    def get_property(self, property: PropertyKey) -> Union[bool, str, float, int, None]:
         """Returns the specific property based on the property argument passed in.
 
         Parameters
@@ -167,7 +167,7 @@ class Sock:
 
     async def _normalise_properties(
         self,
-    ) -> dict[str, Union[bool, str, float]]:
+    ) -> Properties:
         """Takes the raw properties dictionary returned from the API and formats it into another dict that is more stripped down and easier to work with.
 
         Parameters
@@ -179,7 +179,7 @@ class Sock:
             (dict):Returns the stripped down properties as a dict
 
         """
-        properties = {}
+        properties: Properties = {}
 
         for data_type, properties_tmp in PROPERTIES.items():
             for key, property in properties_tmp.items():

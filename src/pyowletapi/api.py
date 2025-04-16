@@ -439,7 +439,6 @@ class OwletAPI:
             if self._tokens_changed:
                 response["tokens"] = self.tokens
                 self._tokens_changed = False
-            print(response)
             return response
         else:
             raise OwletError("Unexpected response type from request.")
